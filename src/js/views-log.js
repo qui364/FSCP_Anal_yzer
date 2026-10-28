@@ -1,0 +1,67 @@
+// журнал событий: фильтры по тексту, коду события и объекту (список ObjectUID из панели деталей)
+const LogView = {
+  props: { uids: Array, title: String },
+  setup(props) {
+    const q = ref(''), code = ref(''), lim = ref(500), objSet = ref(props.uids ? new Set(props.uids) : null), objTitle = ref(props.title || '');
+    const picker = ref(null);
+    const base = computed(() => {
+      const L = logData.value;
+      if (!L) return [];
+      if (!objSet.value) return L.rows;
+      return objSet.value.size === 1 ? (L.byObj.get([...objSet.value][0]) || []) : L.rows.filter(r => objSet.value.has(r.obj));
+    });
+    // строка для поиска считается один раз на событие; ввод в поиск применяется с задержкой
+    const hay = r => r.hay ||= (r.name + ' ' + r.text + ' ' + r.det + ' ' + evName(r.code) + ' ' + evDesc(r.desc) + ' ' + r.code + ' ' + r.desc + ' ' + r.user).toLowerCase();
+    const qd = ref('');
+    let qt = 0;
+    Vue.watch(q, v => { clearTimeout(qt); qt = setTimeout(() => { qd.value = v; }, 200); });
+    onBeforeUnmount(() => clearTimeout(qt));
+    const list = computed(() => {
+      const s = qd.value.trim().toLowerCase(), c = code.value;
+      return base.value.filter(r => (!c || r.code === c) && (!s || hay(r).includes(s)));
+    });
+    const shown = computed(() => list.value.slice(0, lim.value));
+    const codes = computed(() => {
+      const m = new Map();
+      for (const r of base.value) m.set(r.code, (m.get(r.code) || 0) + 1);
+      return [...m].sort((a, b) => b[1] - a[1]);
+    });
+    watchReset(q, code, lim);
+    const date = t => t ? new Date(t).toLocaleString('ru') : '—';
+    const kindOf = r => ({ 1: 'dev', 2: 'zone', 6: 'delay' })[r.type] || '';   // JournalObjectType: 1 GKDevice, 2 GKZone, 6 GKDelay
+    const onPick = () => { const fs = [...picker.value.files]; picker.value.value = ''; readLogs(fs); };
+    return { evName, evSev, evDesc, logData, logBusy, logErr, q, code, lim, objSet, objTitle, picker, list, shown, codes, date, kindOf, onPick, clearLog, openTree, all: () => { objSet.value = null; objTitle.value = ''; }, fmt };
+  },
+  template: `
+<div class="hd"><h2>Журнал событий</h2><span v-if="logData" class="m">{{ logData.rows.length }} событий из {{ logData.files.length }} файл.</span></div>
+<p v-if="logBusy" class="m">{{ logBusy }}</p>
+<p v-if="logErr" class="warn">{{ logErr }}</p>
+<div class="bar">
+  <button class="buildbtn" :disabled="!!logBusy" @click="picker.click()">Загрузить журнал (.csv)</button>
+  <input ref="picker" type="file" accept=".csv" multiple hidden @change="onPick"></div>
+<div v-if="!logData" class="skel" aria-hidden="true" :title="logBusy ? '' : 'Журнал из ГК (CSV): выберите файлы или перетащите их в рамку слева'">
+  <div class="bar"><i class="sk" style="width:300px;height:var(--ctl,32px)"></i><i class="sk" style="width:180px;height:var(--ctl,32px)"></i><i class="sk" style="width:90px"></i></div>
+  <div v-for="n in 9" :key="n" class="skr"><i class="sk" style="width:130px"></i><i class="sk" :style="{ width: (30 + n * 37 % 30) + '%' }"></i><i class="sk" style="width:110px"></i></div>
+</div>
+<template v-if="logData">
+<div class="stk"><div class="bar">
+  <input type="search" v-model="q" placeholder="Поиск: объект, описание, код, пользователь" style="max-width:380px;margin:0">
+  <select v-model="code"><option value="">все коды событий</option><option v-for="[c, n] in codes" :key="c" :value="c">{{ c }}{{ evName(c) ? ' ' + evName(c) : '' }} ({{ n }})</option></select>
+  <span v-if="objSet" class="m">Объект: {{ objTitle || 'выбранный' }} · <span class="ref" @click="all">показать все события</span></span>
+  <span class="m">найдено: {{ list.length }}</span>
+</div></div>
+<table class="lg">
+  <thead><tr><th>Время</th><th>Событие</th><th>Объект</th></tr></thead>
+  <tbody>
+  <tr v-for="r in shown" :key="r.uid" :class="evSev(r.code)">
+    <td class="tm">{{ date(r.t) }}</td>
+    <td class="ev"><i></i>{{ evName(r.code) || r.code }}<template v-if="evDesc(r.desc)"><span class="m">: {{ evDesc(r.desc) }}</span></template></td>
+    <td class="ob"><span v-if="kindOf(r)" :class="['chip', 'ref', 'c-' + kindOf(r)]" @click="openTree(kindOf(r), r.obj)">{{ r.name || r.obj }}</span><template v-else>{{ r.name || r.obj }}</template></td>
+  </tr>
+  </tbody>
+</table>
+<p v-if="list.length > shown.length"><button @click="lim += 1000">Ещё 1000 (осталось {{ list.length - shown.length }})</button></p>
+</template>`,
+};
+// сброс страницы при смене фильтров
+function watchReset(q, code, lim) { Vue.watch([q, code], () => { lim.value = 500; }); }
