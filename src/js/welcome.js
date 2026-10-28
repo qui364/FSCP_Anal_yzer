@@ -12,7 +12,9 @@ const WelcomeView = {
     };
     const onPick = () => { take(picker.value.files); picker.value.value = ''; };
     const onDrop = ev => { over.value = false; take(ev.dataTransfer.files); };
-    return { over, picker, onPick, onDrop };
+    // Mini App Telegram передаёт параметры запуска в хэше URL
+    const tg = /tgWebApp/.test(location.hash);
+    return { over, picker, onPick, onDrop, tg };
   },
   template: `
 <div id="welcome">
@@ -20,5 +22,6 @@ const WelcomeView = {
   <div id="drop" :class="{ over }" @click="picker.click()" @dragover.prevent="over = true" @dragleave="over = false" @drop.prevent="onDrop">
     Перетащите .fscp или .csv файл сюда<br>или нажмите для выбора<input ref="picker" type="file" accept=".fscp,.zip,.csv" multiple hidden @change="onPick">
   </div>
+  <p v-if="tg" id="dnote">Рассчитано на десктопный Telegram: на телефоне интерфейс неудобен.</p>
 </div>`,
 };

@@ -39,6 +39,7 @@ body { margin:0; font:14px/1.45 system-ui,sans-serif; background:var(--bg); colo
 #welcome { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center }
 #appname { margin:0 0 20px; font-size:32px; font-weight:600; letter-spacing:.5px; color:var(--fg) }
 #drop { border:2px dashed var(--line); border-radius:8px; padding:28px 48px; text-align:center; color:var(--mut); cursor:pointer }
+#dnote { margin:14px 0 0; font-size:13px; color:var(--mut); text-align:center }
 #drop.over { border-color:var(--acc); color:var(--acc) }
 #side { width:var(--sw,340px); border-right:1px solid var(--line); background:var(--panel); overflow:auto; padding:12px; flex:none; display:flex; flex-direction:column; transition:width .22s ease, padding .22s ease, border-width .22s ease }
 #side { overflow-x:hidden; padding-top:6px }
