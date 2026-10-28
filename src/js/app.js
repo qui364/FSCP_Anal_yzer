@@ -115,3 +115,15 @@ else idbDo('readonly', s => s.get('log')).then(recs => recs && readLogs(recs.map
   if (!loaded.value) { forgetFile(); return; }
   if (tab === 'raw') openRaw(); else if (tab === 'log') openLog(); else if (tab === 'loginfo') openLogInfo(); else if (tab === 'logic') openLogic(); else if (['dev', 'zone', 'delay', 'plan'].includes(tab)) openTree(tab); else if (tab === 'settings') go({ type: 'settings' });
 }).catch(() => {});
+
+// Mini App Telegram: официальный скрипт грузим только внутри Telegram (по хэшу запуска), в обычном браузере внешних зависимостей нет
+if (/tgWebApp/.test(location.hash)) {
+  const sc = document.createElement('script');
+  sc.src = 'https://telegram.org/js/telegram-web-app.js';
+  sc.onload = () => {
+    const w = window.Telegram && Telegram.WebApp;
+    if (!w) return;
+    try { w.ready(); w.expand(); if (w.isVersionAtLeast('8.0')) w.requestFullscreen(); } catch { /* старый клиент — остаётся обычное окно */ }
+  };
+  document.head.appendChild(sc);
+}

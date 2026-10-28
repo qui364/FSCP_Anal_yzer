@@ -148,7 +148,10 @@ const FileHead = {
 
 const defW = () => Math.round(innerWidth / 4); // пропорция 1:2:1
 const sideW = ref(defW() - 20), detW = ref(defW()), planW = ref(defW());
-try { const v = +localStorage.getItem('fscp.planW'); if (v >= 200 && v <= innerWidth - 300) planW.value = v; } catch { /* нет storage — ширина по умолчанию */ }
+let planWSet = false;
+try { const v = +localStorage.getItem('fscp.planW'); if (v >= 200 && v <= innerWidth - 300) { planW.value = v; planWSet = true; } } catch { /* нет storage — ширина по умолчанию */ }
+// Окно меняет размер (Mini App Telegram открывается малым и разворачивается): панели без ручной ширины следуют за ним
+addEventListener('resize', () => { sideW.value = defW() - 20; detW.value = defW(); if (!planWSet) planW.value = defW(); });
 
 // горизонтальная прокрутка без полосы: перетаскивание, колесо, затухание по краям, при обновлении — к концу
 const hscroll = {

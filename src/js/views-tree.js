@@ -147,7 +147,7 @@ const TreeView = {
       const x0 = e.clientX, w0 = planW.value, el = e.currentTarget;
       el.setPointerCapture(e.pointerId);
       const mv = ev => { planW.value = Math.max(200, Math.min(innerWidth - 300, w0 + ev.clientX - x0)); };
-      const up = () => { try { localStorage.setItem('fscp.planW', String(planW.value)); } catch { /* без storage */ } el.removeEventListener('pointermove', mv); el.removeEventListener('pointerup', up); el.removeEventListener('pointercancel', up); };
+      const up = () => { planWSet = true; try { localStorage.setItem('fscp.planW', String(planW.value)); } catch { /* без storage */ } el.removeEventListener('pointermove', mv); el.removeEventListener('pointerup', up); el.removeEventListener('pointercancel', up); };
       el.addEventListener('pointermove', mv); el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
     };
     const collapseAll = () => { st.open.clear(); st.select('', null); };
