@@ -23,7 +23,7 @@ const LogInfoView = {
   template: `
 <div class="icols">
 <div v-if="ls" class="info icol">
-  <div class="ihead"><span class="ico">🗒️</span><div><h2>Журнал событий</h2><div class="isub">{{ ls.n }} событий · {{ ls.files.length }} файл.</div></div></div>
+  <Teleport to="#tbhead"><h2>Журнал событий</h2><span class="m">{{ ls.n }} событий · {{ ls.files.length }} файл.</span></Teleport>
   <h3>По важности</h3>
   <div class="tiles">
     <button v-for="s in ls.sev" :key="s[0]" :class="['tile', 's-' + s[0]]" @click="openLog()">
@@ -68,7 +68,7 @@ const RawView = {
   },
   template: `
 <div class="rawv">
-<div class="ihead"><span class="ico">🗂️</span><div><h2>Сырые данные</h2><div class="isub">Файлы архива как есть — клик открывает файл</div></div></div>
+<Teleport to="#tbhead"><h2>Сырые данные</h2><span class="m">Файлы архива как есть — клик открывает файл</span></Teleport>
 <input type="search" v-model="rawQ" placeholder="Фильтр по имени файла…" style="max-width:380px">
 <div class="card rawlist">
   <div v-for="e in groups.root" :key="e.name" class="rentry" @click="openFile(e.name)">

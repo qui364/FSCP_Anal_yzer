@@ -33,7 +33,7 @@ const LogView = {
     return { evName, evSev, evDesc, logData, logBusy, logErr, q, code, lim, objSet, objTitle, picker, list, shown, codes, date, kindOf, onPick, clearLog, openTree, all: () => { objSet.value = null; objTitle.value = ''; }, fmt };
   },
   template: `
-<div class="hd"><h2>Журнал событий</h2><span v-if="logData" class="m">{{ logData.rows.length }} событий из {{ logData.files.length }} файл.</span></div>
+<Teleport to="#tbhead"><h2>Журнал событий</h2><span v-if="logData" class="m">{{ logData.rows.length }} событий из {{ logData.files.length }} файл.</span></Teleport>
 <p v-if="logBusy" class="m">{{ logBusy }}</p>
 <p v-if="logErr" class="warn">{{ logErr }}</p>
 <div class="bar">

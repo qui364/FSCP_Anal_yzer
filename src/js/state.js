@@ -28,7 +28,7 @@ const toggleNav =() => { navOpen.value = !navOpen.value; try { localStorage['fsc
 let navId = 0;
 const go = v => {
   view.value = { ...v, id: ++navId };
-  if (v.type === 'raw' || v.type === 'tree' || v.type === 'log' || v.type === 'loginfo' || v.type === 'logic' || v.type === 'bmp' || v.type === 'settings') try { localStorage.fscpTab = v.type === 'tree' ? v.kind : v.type; } catch {}
+  if (v.type === 'raw' || v.type === 'tree' || v.type === 'log' || v.type === 'loginfo' || v.type === 'logic' || v.type === 'settings') try { localStorage.fscpTab = v.type === 'tree' ? v.kind : v.type; } catch {}
 };
 const openLog = (uids, title) => go({ type: 'log', uids, title });
 const openLogInfo = () => go({ type: 'loginfo' });

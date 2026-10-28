@@ -51,22 +51,10 @@ function planObjItems(p) {
   return [...zones, ...o.dev.filter(d => !inZone.has(d)).map(d => devItem(d, true))];
 }
 
-// цвета зон ДУ — как в «Планах ПМИ»
-const DU_COLORS = DU_CONFIG.colors;
-function duItem(z) {
-  const root = z.top || z.subs[0], rest = z.subs.filter(d => d !== root), it = delayItem(root);
-  const plans = model.value.duPlans.map(p => {
-    const o = model.value.planObjs.get(p.uid), n = o ? o.dev.filter(d => z.devs.has(txt(d, 'UID'))).length : 0;
-    return n ? link(p.label, { goto: 'plan:' + p.uid, note: `× ${n}` }) : null;
-  }).filter(Boolean);
-  return { ...it, duNo: z.no, kids: () => rest.map(d => delayItem(d)), detail: () => [...delayDetail(root), ...kv([['Устройств зоны ДУ', z.devs.size], ['Планы', plans]])] };
-}
-
 const TREES = {
   dev:   m => ({ title: 'Устройства', roots: [devItem(m.root)], note: `${m.dev.size - 1} устройств`, warn: m.unknownDrivers ? `неизвестных драйверов: ${m.unknownDrivers}` : '' }),
   zone:  m => ({ title: 'Зоны', roots: m.zones.map(zoneItem), note: `${m.zones.length} зон` }),
   delay: m => ({ title: 'Сценарии', roots: m.delays.map(delayItem), note: `${m.delays.length} сценариев` }),
-  du:    m => ({ title: 'Зоны ДУ', plans: true, du: true, roots: m.duList.map(duItem), note: `${m.duList.length} зон, ${m.duOf.size} устройств` }),
   plan:  m => ({ title: 'Планы', plans: true, roots: m.planRoots.map(planItem), note: `${[...m.plan.values()].filter(p => !isPlanFolder(p)).length} планов` }),
 };
 

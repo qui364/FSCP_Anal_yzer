@@ -137,16 +137,9 @@ const TreeView = {
     });
     const goCrumb = i => reveal(crumbs.value.slice(0, i + 1));
     // план для холста: выбранный узел или ближайший план-предок
-    // вкладка «Зоны ДУ»: сразу все поэтажные планы столбиком (зона может занимать несколько этажей)
-    const duFocus = computed(() => { const c = crumbs.value[0]; return c?.duNo ? [c.duNo] : []; });
-    const planUid = computed(() => { if (props.kind === 'du') return ''; const c = crumbs.value; for (let i = c.length - 1; i >= 0; i--) if (c[i].k === 'plan') return String(c[i].key); return ''; });
+    const planUid = computed(() => { const c = crumbs.value; for (let i = c.length - 1; i >= 0; i--) if (c[i].k === 'plan') return String(c[i].key); return ''; });
     // клик по элементу холста: выделяем объект в дереве плана (путь через текущий план)
     const onPick = uid => {
-      if (props.kind === 'du') {
-        const hs = findPaths(def.roots, it => it.key === uid && it.k === 'dev', 200), h = hs.find(p => p[0].key === crumbs.value[0]?.key) || hs[0];
-        if (h) { if (mode.value === 'filter' && query.value) { query.value = ''; applyFilter(false); } reveal(h); }
-        return;
-      }
       const h = findPaths(def.roots, it => it.key === uid && it.k !== 'plan', 200).find(p => p.some(i => i.key === planUid.value));
       if (h) { if (mode.value === 'filter' && query.value) { query.value = ''; applyFilter(false); } reveal(h); }
     };
@@ -158,15 +151,15 @@ const TreeView = {
       el.addEventListener('pointermove', mv); el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
     };
     const collapseAll = () => { st.open.clear(); st.select('', null); };
-    return { collapseAll, startRz, duFocus, duUids: m.duPlans.map(p => p.uid), onPick, planUid, detOpen, detW, planW, def, query, found, doFind, mode, roots, toggleMode, toggleDiff, diff, diffCount, onEnter, applyFilter, selItem, rows, detailBlocks, logic, partOf, goLogic, crumbs, goCrumb, onKey, noAnc: new Set() };
+    return { collapseAll, startRz, onPick, planUid, detOpen, detW, planW, def, query, found, doFind, mode, roots, toggleMode, toggleDiff, diff, diffCount, onEnter, applyFilter, selItem, rows, detailBlocks, logic, partOf, goLogic, crumbs, goCrumb, onKey, noAnc: new Set() };
   },
   template: `
-<div class="hd"><h2>{{ def.title }}</h2><span class="m">{{ def.note }}<template v-if="def.warn"> · <span class="warn">{{ def.warn }}</span></template></span><label v-if="kind === 'dev'" class="dsw m" title="Плоский список устройств, параметры которых отличаются от параметров по умолчанию"><span class="dsw-t" :class="{ on: diff }">Только с отличиями<template v-if="diffCount !== null"> <b>{{ diffCount }}</b></template></span><button type="button" role="switch" :aria-checked="diff" class="sw" :class="{ on: diff }" @click="toggleDiff"></button></label></div>
+<Teleport to="#tbhead"><h2>{{ def.title }}</h2><span class="m">{{ def.note }}<template v-if="def.warn"> · <span class="warn">{{ def.warn }}</span></template></span><button v-if="kind === 'dev'" type="button" class="dsw" :class="{ on: diff }" :aria-pressed="diff" title="Плоский список устройств, параметры которых отличаются от параметров по умолчанию" @click="toggleDiff">Только с отличиями<template v-if="diffCount !== null"> <b>{{ diffCount }}</b></template></button></Teleport>
 <div class="stk"><div class="bar"><div class="sgrp"><input type="search" v-model="query" @keydown.enter="onEnter" @input="mode === 'filter' && applyFilter()" :placeholder="mode === 'filter' ? 'Фильтр по подписи' : 'Поиск по подписи (Enter — следующее)'"><button @click="toggleMode" :title="mode === 'filter' ? 'Режим: фильтр (только совпадения). Нажмите — переключить на поиск' : 'Режим: поиск (переход к совпадениям). Нажмите — переключить на фильтр'" class="ib"><svg v-if="mode === 'filter'" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M2 3h12l-4.5 5.5V13l-3-1.5V8.5z"/></svg><svg v-else width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5L14 14"/></svg></button></div><button @click="collapseAll" title="Свернуть все узлы и сбросить выбор" aria-label="Свернуть все" class="ib"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2.5l5 4 5-4M3 13.5l5-4 5 4"/></svg></button><span class="m">{{ found }}</span></div>
 <div class="crumbs tc m" v-hscroll><template v-if="crumbs.length"><template v-for="(c, i) in crumbs" :key="i"><span :class="[i < crumbs.length - 1 ? 'ref chip chev' : 'chip chev', 'c-' + c.k]" @click="i < crumbs.length - 1 && goCrumb(i)">{{ c.label }}</span></template></template><template v-else>Выберите узел — здесь появится путь</template></div></div>
 <div class="split">
   <div id="tview" class="xml" tabindex="0" @keydown="onKey" :style="def.plans ? { width: planW + 'px' } : null"><tree-node v-for="r in roots" :key="r.key" :item="r" parent-pk="" :anc="noAnc" /></div>
-  <div v-if="def.plans" id="tprev"><div class="rz" title="Потяните, чтобы изменить ширину дерева" @pointerdown.prevent="startRz"></div><plan-canvas v-if="def.du" :plans="duUids" :sel="selItem && selItem.k !== 'plan' ? selItem.key : ''" du-mode="only" :focus="duFocus" @pick="onPick" /><plan-canvas v-else :plan="planUid" :sel="selItem && selItem.k !== 'plan' ? selItem.key : ''" :focus="duFocus" @pick="onPick" /></div>
+  <div v-if="def.plans" id="tprev"><div class="rz" title="Потяните, чтобы изменить ширину дерева" @pointerdown.prevent="startRz"></div><plan-canvas :plan="planUid" :sel="selItem && selItem.k !== 'plan' ? selItem.key : ''" @pick="onPick" /></div>
   <div id="tdet" :class="{ closed: !detOpen }" :inert="!detOpen">
     <p v-if="!selItem" class="m">Выберите узел.</p>
     <template v-else><div class="dhead"><span :class="['chip', 'c-' + selItem.k]">{{ selItem.label }}</span></div><template v-if="detailBlocks.length"><details v-for="block in detailBlocks" :key="block.title" class="detail-block" :open="block.title !== 'Драйвер'"><summary><h3>{{ block.title }}</h3></summary><detail-table :rows="block.rows" /></details></template><detail-table v-else :rows="rows" /><device-parameters v-if="selItem.paramInfo" :data="selItem.paramInfo" /><template v-if="partOf"><h3 class="lgt">В сценариях</h3><logic-node :key="selItem.key" :n="partOf" @pick="goLogic" /></template><template v-if="logic"><h3 class="lgt">Логика</h3><logic-node :n="logic" :top="true" @pick="goLogic" /></template></template>

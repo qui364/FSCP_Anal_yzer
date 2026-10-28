@@ -40,35 +40,6 @@ async function buildModelRun(silent) {
     m.zones.forEach(z => m.zone.set(txt(z, 'UID'), z));
     m.delays = subs(gk, 'Delays', 'GKDelay').sort(byNo);
     m.delays.forEach(d => m.delay.set(txt(d, 'UID'), d));
-    // зоны дымоудаления: сценарии «Зона ДУ N» (корень) и «Зона ДУ N <суффикс>» (Клапаны, ДП, ДВ, УДП, ПОЖАР…); N может быть дробным (12.1)
-    const duMap = new Map(); m.duOf = new Map();
-    for (const d of m.delays) {
-      const mm = /^Зона ДУ (\d+(?:\.\d+)?)(?: (.+))?$/.exec(txt(d, 'Name'));
-      if (!mm) continue;
-      const z = duMap.get(mm[1]) || duMap.set(mm[1], { no: mm[1], top: null, subs: [], devs: new Set() }).get(mm[1]);
-      if (mm[2]) z.subs.push(d); else z.top = d;
-      for (const x of subs(d, 'DirectionDevices', 'DirectionDevice')) {
-        const u = txt(x, 'DeviceUid');
-        if (!m.dev.has(u)) continue;
-        z.devs.add(u);
-        const dn = DRIVERS[txt(m.dev.get(u), 'DriverUID')]?.[0] || '';
-        if (!dn.startsWith('МДУ') && !dn.startsWith('ШУН-В')) continue;   // на планах — МДУ и ШУН-В
-        const a = m.duOf.get(u) || m.duOf.set(u, []).get(u);
-        if (!a.includes(mm[1])) a.push(mm[1]);
-      }
-    }
-    m.duZones = new Map();                            // UID пожарной зоны -> номера зон ДУ, в чьё условие «Зона ДУ N ПОЖАР» она входит (границы области на плане)
-    for (const d of m.delays) {
-      const mm = /^Зона ДУ (\d+(?:\.\d+)?) ПОЖАР$/.exec(txt(d, 'Name'));
-      if (!mm) continue;
-      for (const g of d.querySelectorAll('Logic ZoneUIDs > guid')) {
-        const u = g.textContent.trim(), a = m.duZones.get(u) || m.duZones.set(u, []).get(u);
-        if (!a.includes(mm[1])) a.push(mm[1]);
-      }
-    }
-    for (const a of m.duZones.values()) a.sort((x, y) => parseFloat(x) - parseFloat(y));
-    m.duList = [...duMap.values()].sort((a, b) => parseFloat(a.no) - parseFloat(b.no));
-    for (const a of m.duOf.values()) a.sort((x, y) => parseFloat(x) - parseFloat(y));
     for (const d of m.delays) {                       // сценарии, упомянутые в условиях (Logic) другого сценария
       const refs = new Set([...d.querySelectorAll('Logic DelayUIDs > guid')].map(g => g.textContent.trim()).filter(u => m.delay.has(u)));
       m.delayRefs.set(txt(d, 'UID'), [...refs].map(u => m.delay.get(u)).sort(byNo));
@@ -99,14 +70,6 @@ async function buildModelRun(silent) {
       for (const u of ps) { const c = m.planCnt.get(u) || m.planCnt.set(u, {}).get(u); c[kind] = (c[kind] || 0) + 1; }
       for (const u of ps) { const c = m.planObjs.get(u) || m.planObjs.set(u, { dev: [], zone: [] }).get(u); c[kind].push(x); }
     }
-    // планы с устройствами зон ДУ: поэтажные, отметка «+15,000» и кровля (без панели ПМИ), подписаны этажом
-    const FLOORS = DU_CONFIG.floors;
-    m.duPlans = [];
-    for (const [u, o] of m.planObjs) {
-      const p = m.plan.get(u), name = txt(p, 'Name'), n = o.dev.filter(d => m.duOf.has(txt(d, 'UID'))).length;
-      if (n && FLOORS.includes(name)) m.duPlans.push({ uid: u, n, label: name });
-    }
-    m.duPlans.sort((a, b) => FLOORS.indexOf(a.label) - FLOORS.indexOf(b.label));
     return model.value = m;
   } catch (e) {
     error.value = 'Не удалось разобрать конфигурацию: ' + e.message;

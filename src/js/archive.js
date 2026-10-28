@@ -8,7 +8,6 @@ async function withModel(tag, v) {
 }
 function openTree(kind, sel) { return withModel(kind, { type: 'tree', kind, sel }); }
 function openLogic() { return withModel('logic', { type: 'logic' }); }
-function openBmp() { return withModel('bmp', { type: 'bmp' }); }
 
 // сигнатура архива для привязки сохранённых правок планов (имя, размер, дата изменения)
 const planSig = (name, size, mtime) => name + '|' + size + '|' + (mtime || 0);

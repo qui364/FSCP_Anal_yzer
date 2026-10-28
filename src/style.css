@@ -32,7 +32,7 @@ body { margin:0; font:14px/1.45 system-ui,sans-serif; background:var(--bg); colo
 #shell { display:flex; flex:1; min-height:0 }
 #topbar { height:var(--tb); flex:none; display:flex; align-items:center; gap:8px; padding:0 12px; border-bottom:1px solid var(--line); background:var(--panel) }
 #apptitle { font-weight:600; letter-spacing:.3px }
-#apptitle { margin-right:4px }
+#apptitle { margin-right:4px; font-size:14px; line-height:20px }
 .tbsp { flex:1 }
 
 .iconbtn { width:var(--ctl,32px); padding:0; display:inline-flex; align-items:center; justify-content:center; font-size:18px; flex:none }
@@ -48,13 +48,15 @@ body { margin:0; font:14px/1.45 system-ui,sans-serif; background:var(--bg); colo
 #main { flex:1; overflow:auto; padding:16px 20px; min-width:0; display:flex; flex-direction:column }
 #main { align-items:flex-start }
 #main > * { flex:none }
-#main > .bar, #main > .hd, #main > .crumbs { width:100% }
-.hd { display:flex; align-items:baseline; gap:12px; margin-bottom:8px }
-.hd h2 { margin:0; font-size:18px }
-.hd .dsw { margin-left:auto; display:flex; align-items:center; gap:8px; align-self:center; cursor:pointer; user-select:none }
-.hd .dsw-t { color:var(--mut); transition:color .15s }
-.hd .dsw-t.on, .hd .dsw:hover .dsw-t { color:var(--fg) }
-.hd .dsw-t b { font-weight:600; color:var(--acc); margin-left:2px }
+#main > .bar, #main > .crumbs { width:100% }
+#tbhead { display:flex; align-items:center; gap:10px; min-width:0; overflow:hidden; white-space:nowrap }
+#tbhead h2 { margin:0; font-size:14px; font-weight:600; line-height:20px; flex:none }
+#tbhead h2::before { content:'—'; margin-right:10px; font-weight:400; color:var(--mut) }
+#tbhead .m { line-height:20px; overflow:hidden; text-overflow:ellipsis }
+#tbhead .dsw { margin-left:12px; flex:none; height:28px; padding:0 12px; white-space:nowrap; display:flex; align-items:center }
+#tbhead .dsw b { font-weight:600; color:var(--acc); margin-left:10px; padding-left:10px; border-left:1px solid var(--line); line-height:16px }
+#tbhead .dsw.on { background:var(--acc); border-color:var(--acc); color:#fff }
+#tbhead .dsw.on b { color:#fff; border-left-color:#fff6 }
 #main > .bar { margin-bottom:6px }
 .crumbs { font-size:12px; margin-bottom:8px; height:26px; line-height:24px; white-space:nowrap; overflow-x:auto; overflow-y:hidden; scrollbar-width:none; cursor:grab; min-width:0 }
 .chip.chev { --lf:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 23' preserveAspectRatio='none'%3E%3Cpath d='M3.54,3.54Q0.00,0.00 5.00,0.00L23.50,0.00Q28.50,0.00 32.04,3.54L36.46,7.96Q40.00,11.50 36.46,15.04L32.04,19.46Q28.50,23.00 23.50,23.00L5.00,23.00Q0.00,23.00 3.54,19.46L7.96,15.04Q11.50,11.50 7.96,7.96Z'/%3E%3C/svg%3E"); --lr:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 23' preserveAspectRatio='none'%3E%3Cpath fill-rule='evenodd' d='M3.54,3.54Q0.00,0.00 5.00,0.00L23.50,0.00Q28.50,0.00 32.04,3.54L36.46,7.96Q40.00,11.50 36.46,15.04L32.04,19.46Q28.50,23.00 23.50,23.00L5.00,23.00Q0.00,23.00 3.54,19.46L7.96,15.04Q11.50,11.50 7.96,7.96ZM5.24,3.83Q2.41,1.00 6.41,1.00L24.09,1.00Q28.09,1.00 30.91,3.83L35.76,8.67Q38.59,11.50 35.76,14.33L30.91,19.17Q28.09,22.00 24.09,22.00L6.41,22.00Q2.41,22.00 5.24,19.17L10.09,14.33Q12.91,11.50 10.09,8.67Z'/%3E%3C/svg%3E"); --rf:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='26 0 14 23' preserveAspectRatio='none'%3E%3Cpath d='M3.54,3.54Q0.00,0.00 5.00,0.00L23.50,0.00Q28.50,0.00 32.04,3.54L36.46,7.96Q40.00,11.50 36.46,15.04L32.04,19.46Q28.50,23.00 23.50,23.00L5.00,23.00Q0.00,23.00 3.54,19.46L7.96,15.04Q11.50,11.50 7.96,7.96Z'/%3E%3C/svg%3E"); --rr:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='26 0 14 23' preserveAspectRatio='none'%3E%3Cpath fill-rule='evenodd' d='M3.54,3.54Q0.00,0.00 5.00,0.00L23.50,0.00Q28.50,0.00 32.04,3.54L36.46,7.96Q40.00,11.50 36.46,15.04L32.04,19.46Q28.50,23.00 23.50,23.00L5.00,23.00Q0.00,23.00 3.54,19.46L7.96,15.04Q11.50,11.50 7.96,7.96ZM5.24,3.83Q2.41,1.00 6.41,1.00L24.09,1.00Q28.09,1.00 30.91,3.83L35.76,8.67Q38.59,11.50 35.76,14.33L30.91,19.17Q28.09,22.00 24.09,22.00L6.41,22.00Q2.41,22.00 5.24,19.17L10.09,14.33Q12.91,11.50 10.09,8.67Z'/%3E%3C/svg%3E"); --f:color-mix(in srgb, var(--acc) 14%, transparent); --bd:color-mix(in srgb, var(--acc) 35%, transparent); --hh:calc((1.5em + 2px) / 2); position:relative; isolation:isolate; flex:none; margin-left:calc(3px - var(--hh)); padding:1px calc(var(--hh) + 5px) 1px calc(var(--hh) + 6px); border:0; border-radius:0; background:none; vertical-align:top; color:var(--acc) }
@@ -68,12 +70,10 @@ body { margin:0; font:14px/1.45 system-ui,sans-serif; background:var(--bg); colo
 span.sep { margin:0 6px; color:var(--mut); font-size:20px; line-height:1; vertical-align:-2px }
 #main > .split, #main > #src { flex:1 1 0; width:100% }
 #main > .stk { position:sticky; top:-8px; z-index:4; width:100%; padding-top:8px; background:var(--bg) }
-#main > .hd:has(+ .stk) { margin-bottom:0 }
 #main > .stk > .bar { display:flex; align-items:center; gap:8px; margin-bottom:6px }
 #main > .split { flex:1 0 auto; min-height:0; width:100% }
 #main:has(#tdet) { padding:16px 0 0 }
-#main:has(#tdet) > .hd, #main:has(#tdet) > .stk { padding-left:20px; padding-right:20px }
-#main:has(#tdet) > .hd { width:calc(100% - var(--dw,380px)); box-sizing:border-box }
+#main:has(#tdet) > .stk { padding-left:20px; padding-right:20px }
 #main:has(#tdet) { overflow:hidden }
 #main:has(#tdet) > .stk { width:calc(100% - var(--dw,380px)); padding-right:20px }
 #main:has(#tdet) > .split { flex:1 1 0; padding-right:var(--dw,380px) }
@@ -86,21 +86,24 @@ span.sep { margin:0 6px; color:var(--mut); font-size:20px; line-height:1; vertic
 #tprev canvas { position:absolute; inset:0; width:100%; height:100%; touch-action:none; cursor:grab; --line:var(--mut) }
 #tprev .zbar { position:absolute; right:12px; bottom:12px; display:flex; align-items:center; gap:6px; background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:4px 6px }
 #tprev .zbar .m { min-width:44px; text-align:center }
+#tprev .zbar .ib { width:var(--ctl); padding:0; display:flex; align-items:center; justify-content:center }
+#tprev .zbar .ib svg { display:block; flex:none }
 #tprev .zbar .ib.on { background:var(--acc); color:#fff }
 #tprev canvas:focus { outline:none }
-#tprev .ebar { position:absolute; right:12px; top:12px; width:260px; max-height:calc(100% - 80px); overflow:auto; display:flex; flex-direction:column; gap:8px; background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:8px; box-shadow:0 2px 8px #0003 }
+#tprev .ebar { position:absolute; left:12px; right:12px; top:12px; z-index:4; display:flex; flex-direction:column; gap:6px; background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:6px 8px; box-shadow:0 2px 8px #0003 }
 #tprev .ebar .erow { display:flex; align-items:center; gap:6px }
-#tprev .ebar .erow b { flex:1 }
-#tprev .ebar .erow select, #tprev .ebar .erow input { min-width:0; flex:1 }
-#tprev .ebar .erow button:not(.ib) { flex:1 }
-#tprev .ebar .eprops { display:grid; grid-template-columns:1fr 1fr; gap:6px }
-#tprev .ebar .eprops .m { grid-column:1 / -1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
-#tprev .ebar .eprops label { display:flex; align-items:center; gap:4px }
-#tprev .ebar .eprops input { min-width:0; width:100%; height:var(--ctl); border-radius:8px }
-#tprev .ebar .elist { max-height:180px; overflow:auto; margin-top:6px; border:1px solid var(--line); border-radius:6px }
+#tprev .ebar .erow.main { flex-wrap:wrap }
+#tprev .ebar .erow .ib { width:var(--ctl); padding:0; display:flex; align-items:center; justify-content:center }
+#tprev .ebar .erow button.on { background:var(--acc); color:#fff }
+#tprev .ebar .elab { flex:1 1 160px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+#tprev .ebar label { display:flex; align-items:center; gap:4px }
+#tprev .ebar label input { width:72px; min-width:0; height:var(--ctl); border-radius:8px }
+#tprev .ebar .erow.add { position:relative; flex-wrap:wrap }
+#tprev .ebar .erow.add select { flex:none }
+#tprev .ebar .erow.add input { flex:1 1 160px; min-width:0 }
+#tprev .ebar .elist { flex:1 0 100%; max-height:180px; overflow:auto; border:1px solid var(--line); border-radius:6px }
 #tprev .ebar .eit { padding:3px 8px; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
 #tprev .ebar .eit:hover { background:var(--acc); color:#fff }
-#tprev .ebar summary { cursor:pointer }
 #tprev p { position:relative; margin:0 }
 #tprev .ptip { position:absolute; white-space:pre-line; z-index:5; pointer-events:none; max-width:360px; background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:4px 8px; box-shadow:0 2px 8px #0004 }
 #main:has(#tdet) #tview { border-width:0; border-radius:0 }
@@ -163,7 +166,7 @@ input[type=search]::-webkit-search-cancel-button:hover { opacity:1; background:v
 .lg .ev { font-weight:500 }
 .lg .ev i { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:9px; background:var(--c); box-shadow:0 0 0 3px color-mix(in srgb, var(--c) 22%, transparent) }
 .lg .ev .m { font-weight:400 }
-.c-dev { --ck:var(--c-dev) } .c-zone { --ck:var(--c-zone) } .c-delay, .c-du, .c-logic, .c-bmp { --ck:var(--c-delay) } .c-plan { --ck:var(--c-plan) } .c-folder { --ck:var(--c-plan) }
+.c-dev { --ck:var(--c-dev) } .c-zone { --ck:var(--c-zone) } .c-delay, .c-logic { --ck:var(--c-delay) } .c-plan { --ck:var(--c-plan) } .c-folder { --ck:var(--c-plan) }
 .chip { display:inline-block; padding:0 9px; border-radius:5px; background:color-mix(in srgb, var(--ck, var(--acc)) 14%, transparent); border:1px solid color-mix(in srgb, var(--ck, var(--acc)) 35%, transparent); line-height:1.5; text-decoration:none }
 .chip.t, .chip.ref { color:var(--ck, var(--acc)) }
 .chip.ref { text-decoration:none }
@@ -219,7 +222,7 @@ button.danger:hover:not(:disabled) { background:#e5484d; border-color:#e5484d }
 #tdet { overflow-x:hidden; transition:width .22s ease, padding .22s ease, border-width .22s ease }
 #tdet > * { min-width:calc(var(--dw0,380px) - 25px) }
 #tdet.closed { padding-left:0; padding-right:0; border-left-width:0; overflow:hidden }
-#main:has(#tdet) > .stk, #main:has(#tdet) > .hd { transition:width .22s ease }
+#main:has(#tdet) > .stk { transition:width .22s ease }
 #main:has(#tdet) > .split { transition:padding-right .22s ease }
 @media (prefers-reduced-motion: reduce) { #tdet, #main:has(#tdet) > .stk, #main:has(#tdet) > .split { transition:none } }
 #tdet table { word-break:break-all }
@@ -333,8 +336,6 @@ svg.ni { vertical-align:-3px; margin-right:8px; flex:none }
 .rchev { display:inline-block; width:12px; color:var(--mut); transition:transform .15s }
 .rfolder[open] > summary .rchev { transform:rotate(90deg) }
 .rkids { margin:2px 0 4px 20px; padding-left:8px; border-left:1px solid var(--line) }
-
-
 /* «Логика» */
 #main > .l3 { width:100%; flex:1 1 0; min-height:0 }
 #main:has(> .l3) { padding:0 }
@@ -355,13 +356,3 @@ svg.ni { vertical-align:-3px; margin-right:8px; flex:none }
 .l3-lst .l3-r:hover rect { filter:brightness(1.15) } .l3-lst .l3-r.more rect { opacity:.5 }
 .l3-lst .l3-r text { fill:#fff; font-size:11px; font-weight:600; pointer-events:none } .l3-lst .l3-r text.l3-s { font-size:9px; font-weight:400; opacity:.85 }
 .l3-n:hover rect { filter:brightness(1.12) }
-
-
-#main > .bmpwrap { display:flex; flex:1 1 0; min-height:0; margin:-16px -20px; width:calc(100% + 40px) }
-#main > .bmpwrap > #tview { flex:none; width:380px; border-width:0 1px 0 0; border-radius:0 }
-.bmpprev { flex:1; min-width:0; position:relative; overflow:hidden; font-size:13px; background:var(--bg) }
-.bmpprev canvas { position:absolute; inset:0; width:100%; height:100%; touch-action:none; cursor:grab; --line:var(--mut) }
-.bmpprev .zbar { position:absolute; right:12px; bottom:12px; display:flex; align-items:center; gap:6px; background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:4px 6px }
-.bmpprev .zbar .m { min-width:44px; text-align:center }
-.bmpprev .zbar .ib.on { background:var(--acc); color:#fff }
-.bmpprev .ptip { position:absolute; white-space:pre-line; z-index:5; pointer-events:none; max-width:360px; background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:4px 8px; box-shadow:0 2px 8px #0004 }

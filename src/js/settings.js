@@ -22,7 +22,7 @@ const SettingsView = {
     return { theme, set, icons, setIcons, exit, opts: [['system', 'Система'], ['light', 'Светлая'], ['dark', 'Тёмная']] };
   },
   template: `<div class="set">
-<h2>Настройки</h2>
+<Teleport to="#tbhead"><h2>Настройки</h2></Teleport>
 <h3>Оформление</h3>
 <div class="card">
   <div class="srow"><div><b>Тема</b><small>Светлая, тёмная или как в системе</small></div><div class="seg"><button v-for="[v, n] in opts" :key="v" :class="{ sel: theme === v }" @click="set(v)">{{ n }}</button></div></div>

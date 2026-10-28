@@ -2,92 +2,6 @@
 const GK_NAME = { i: 'Устройство зоны', z: 'Зона', d: 'Сценарий', o: 'Исполнитель' };
 const gkClass = n => n.kind === 'z' ? 'zone' : n.kind === 'd' ? 'delay' : 'dev';
 
-// узлы: i:<uid> (устройство в зоне / в условии), z:<uid>, d:<uid>, o:<uid> (устройство в DirectionDevices); связи идут слева направо
-function buildGraph() {
-  const m = model.value;
-  if (m.graph) return m.graph;
-  const nodes = [], idx = new Map(), emap = new Map();
-  const add = (kind, uid, lab, no = 0) => {
-    const id = kind + ':' + uid;
-    let i = idx.get(id);
-    if (i == null) { i = nodes.length; idx.set(id, i); nodes.push({ id, kind, uid, label: lab(), no, in: [], out: [], layer: 0, pos: 0.5, placed: false }); }
-    return i;
-  };
-  const link = (a, b, st, raw) => {
-    const k = a + '>' + b;
-    let e = emap.get(k);
-    if (!e) { e = { a, b, st: new Set(), raw: new Set() }; emap.set(k, e); nodes[a].out.push(b); nodes[b].in.push(a); }
-    if (st) e.st.add(st);
-    if (raw) e.raw.add(raw);
-  };
-  const dlab = u => () => devLabel(m.dev.get(u));
-  for (const d of m.delays) add('d', txt(d, 'UID'), () => delayLabel(d), +txt(d, 'No') || 0);
-  const zoneDone = new Set();
-  const zone = u => {
-    const z = m.zone.get(u), zi = add('z', u, () => zoneLabel(z), +txt(z, 'No') || 0);
-    nodes[zi].f1 = +txt(z, 'Fire1Count') || 1;   // сколько датчиков зоны нужно для «Пожар 1» / «Пожар 2»
-    nodes[zi].f2 = +txt(z, 'Fire2Count') || 2;
-    if (!zoneDone.has(u)) {
-      zoneDone.add(u);
-      for (const dv of m.devByZone.get(u) || []) { const x = txt(dv, 'UID'); link(add('i', x, dlab(x)), zi, ''); }
-    }
-    return zi;
-  };
-  for (const d of m.delays) {
-    const du = txt(d, 'UID'), di = idx.get('d:' + du);
-    for (const c of d.querySelectorAll('Logic GKClause')) {
-      const s = txt(c, 'StateType'), st = ST[s] || s;
-      for (const u of guids(c, 'ZoneUIDs')) if (m.zone.has(u)) link(zone(u), di, st, s);
-      for (const u of guids(c, 'DeviceUIDs')) if (m.dev.has(u)) link(add('i', u, dlab(u)), di, st, s);
-      for (const u of guids(c, 'DelayUIDs')) if (m.delay.has(u) && u !== du) link(idx.get('d:' + u), di, st, s);
-    }
-    for (const x of subs(d, 'DirectionDevices', 'DirectionDevice')) {
-      const u = txt(x, 'DeviceUid');
-      if (m.dev.has(u)) link(di, add('o', u, dlab(u)), '');
-    }
-  }
-  // слои: 0 — устройства зон, 1 — зоны, 2+глубина — сценарии (цепочки «сценарий → сценарий»), последний — исполнители
-  const dep = new Map();
-  const depth = i => {
-    if (dep.has(i)) return dep.get(i);
-    dep.set(i, 0);   // защита от циклов
-    let b = 0;
-    for (const p of nodes[i].in) if (nodes[p].kind === 'd') b = Math.max(b, depth(p) + 1);
-    dep.set(i, b);
-    return b;
-  };
-  let maxD = 0;
-  nodes.forEach((n, i) => { if (n.kind === 'd') { n.layer = 2 + depth(i); maxD = Math.max(maxD, n.layer - 2); } });
-  const L = 4 + maxD;
-  nodes.forEach(n => { if (n.kind === 'z') n.layer = 1; else if (n.kind === 'o') n.layer = L - 1; });
-  const byLayer = Array.from({ length: L }, () => []);
-  nodes.forEach((n, i) => byLayer[n.layer].push(i));
-  // порядок внутри слоя — по среднему положению связанных узлов предыдущих слоёв (меньше пересечений)
-  const place = (l, key) => {
-    const a = byLayer[l], ks = new Map(a.map(i => [i, key(i)]));
-    a.sort((p, q) => ks.get(p) - ks.get(q) || nodes[p].no - nodes[q].no || nodes[p].label.localeCompare(nodes[q].label, 'ru'));
-    a.forEach((i, k) => { nodes[i].pos = a.length > 1 ? k / (a.length - 1) : 0.5; nodes[i].placed = true; });
-  };
-  const avg = (i, dir) => { const ps = nodes[i][dir].filter(p => nodes[p].placed).map(p => nodes[p].pos); return ps.length ? ps.reduce((s, x) => s + x, 0) / ps.length : 0.5; };
-  place(1, i => nodes[i].no);
-  place(0, i => avg(i, 'out'));
-  for (let l = 2; l < L; l++) place(l, i => avg(i, 'in'));
-  // сетка в плоскости YZ каждого слоя, слои расставлены по X
-  const GAP = 45, P = new Float32Array(nodes.length * 3);
-  byLayer.forEach((a, l) => {
-    const n = a.length;
-    if (!n) return;
-    const cols = Math.ceil(Math.sqrt(n * 1.6)), rows = Math.ceil(n / cols), s = Math.min(6, 80 / cols);
-    a.forEach((i, k) => {
-      P[i * 3] = l * GAP;
-      P[i * 3 + 1] = ((rows - 1) / 2 - ((k / cols) | 0)) * s;
-      P[i * 3 + 2] = ((k % cols) - (cols - 1) / 2) * s;
-    });
-  });
-  return m.graph = { nodes, idx, emap, edges: [...emap.values()], P, P0: P.slice(), L };
-}
-
-// схема строится автоматически: узлы графа схлопываются в группы по шаблону имени (числа → №; устройства — по типу драйвера), слои — как выше
 const L3_ND = /\d+(?:[.,]\d+)*/g;
 function buildLogicGroups() {
   const m = model.value;
@@ -271,6 +185,7 @@ const LogicView = {
     return { animOn, align, setAlign, toggleAnim, fit, scene, lay, focus, focusOn, bgClick, P, svg, v, onWheel, down, move, up, g, hov, pin, more, NW, NH, nodeOn, edgeOn, click, isOpen, leaving, setOpen, listOf, descOf, more, LH, cur, kindName, cls, goto, gkClass };
   },
   template: `<div class="l3">
+  <Teleport to="#tbhead"><h2>Логика</h2></Teleport>
   <div class="l3-bar">
     <button :class="{ on: animOn }" @click="toggleAnim">Анимация: {{ animOn ? 'вкл' : 'выкл' }}</button>
     <button @click="fit">Вписать</button>
@@ -297,35 +212,5 @@ const LogicView = {
       <path class="l3-cb" :d="'M' + (n.x + NW - 34) + ',' + n.y + 'h27a7,7 0 0 1 7,7v' + (NH - 14) + 'a7,7 0 0 1 -7,7h-27z'" @click.stop="setOpen(n.i)" />
     </g></g>
   </g></svg>
-</div>`
-};
-
-const BMP_DRIVERS = new Set(['d34219d9-3b49-4b12-866c-f75cb2b93845', '8bfbb420-04fb-47fb-b2c7-2ca38561c444']);   // БМП, БМП2 (кольцевая АЛС); e4850e38 — парные БМП2 1.13.x без элементов на планах, не берём
-const BmpLogicView = {
-  name: 'BmpLogicView',
-  setup() {
-    const m = model.value;
-    const below = (d, out) => { for (const c of subs(d, 'Children', 'GKDevice')) { out.push(txt(c, 'UID'), ...guids(c, 'ZoneUIDs')); below(c, out); } return out; };   // устройства под БМП и их зоны
-    const list = [...m.dev.values()].filter(d => BMP_DRIVERS.has(txt(d, 'DriverUID'))).map(d => {
-      let plan = '';
-      for (const e of guids(d, 'PlanElementUIDs')) { const p = m.planOf.get(e); if (p) { plan = txt(p, 'UID'); break; } }
-      return { uid: txt(d, 'UID'), label: devLabel(d), sub: txt(d, 'Description'), plan, box: below(d, []) };
-    }).map(x => ({ ...x, n: +(/№\s*(\d+)/.exec(x.sub)?.[1] ?? 1e9) })).sort((a, b) => a.n - b.n || a.label.localeCompare(b.label, 'ru', { numeric: true }));
-    const st = makeTreeState('bmp');
-    provide('tree', st);
-    const roots = list.map(x => ({ ...devItem(m.dev.get(x.uid)), label: x.sub || x.label, sub: '' }));
-    const bmpOf = new Map();
-    for (const x of list) { bmpOf.set(x.uid, x); for (const u of x.box) bmpOf.set(u, x); }
-    const cur = computed(() => bmpOf.get(st.item.value?.key));
-    return { roots, cur, onKey: ev => treeOnKey(st, ev), noAnc: new Set() };
-  },
-  template: `
-<div class="bmpwrap">
-  <div id="tview" class="xml" tabindex="0" @keydown="onKey"><tree-node v-for="r in roots" :key="r.key" :item="r" parent-pk="" :anc="noAnc" /></div>
-  <div class="bmpprev">
-    <p v-if="!cur" class="m" style="padding:16px">Выберите БМП</p>
-    <p v-else-if="!cur.plan" class="m" style="padding:16px">Этого БМП нет на планах</p>
-    <plan-canvas v-else :key="cur.uid" :plan="cur.plan" :box="cur.box" closeup />
-  </div>
 </div>`
 };
