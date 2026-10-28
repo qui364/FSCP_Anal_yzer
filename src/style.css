@@ -376,7 +376,8 @@ svg.ni { vertical-align:-3px; margin-right:8px; flex:none }
   body { font-size:15px }
   #apptitle, #tbhead .m { display:none }
   #tbhead h2::before { display:none }
-  #tbhead .dsw { margin-left:0 }
+  #tbhead .dsw { margin-left:0; min-width:0; padding:0 10px; font-size:13px }
+  #tbhead .dsw b { margin-left:6px; padding-left:6px }
   #main { padding:12px }
   #welcome { padding:0 16px }
   #appname { font-size:26px; text-align:center }
@@ -400,6 +401,7 @@ svg.ni { vertical-align:-3px; margin-right:8px; flex:none }
   #main:has(#tprev) #tview { width:auto !important; flex:0 0 38% }
   #tprev { flex:1 1 0; min-height:0; border-left:0; border-top:1px solid var(--line); padding:0 }
   #tprev .rz { display:none }
+  #tprev > p { padding:12px }
   #tprev .ebar { left:6px; right:6px; top:6px }
   #tprev .zbar { right:8px; bottom:8px }
 

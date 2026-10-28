@@ -191,6 +191,12 @@ const LogicView = {
       const r = svg.value.getBoundingClientRect(), L = lay.value, k = Math.min(r.width / L.W, r.height / L.H, 1.5);
       animate(lay.value, lay.value, v.value, { k, x: (r.width - L.W * k) / 2, y: (r.height - L.H * k) / 2 });
     };
+    // на телефоне схема сразу вписывается в экран (иначе видна только левая часть)
+    onMounted(() => {
+      if (!isMobile.value || !svg.value) return;
+      const r = svg.value.getBoundingClientRect(), L = lay.value, k = Math.min(r.width / L.W, r.height / L.H, 1.5);
+      if (k > 0) v.value = { k, x: (r.width - L.W * k) / 2, y: (r.height - L.H * k) / 2 };
+    });
     const bgClick = ev => { if (focus.value !== '' && !moved && !ev.target.closest('.l3-n')) focusOn(focus.value); };
     const click = i => { if (!moved) focusOn(i); };
     const cur = computed(() => pin.value === '' ? null : g.groups[pin.value]);
