@@ -42,7 +42,8 @@ const TreeNode = {
     // клик — выбор; раскрытие — по стрелке слева или двойным кликом (в XML — любым кликом)
     const click = ev => {
       st.select(pk.value, props.item);
-      if (props.item.xml || (ev.target === ev.currentTarget && ev.offsetX < 22)) toggle();
+      if (props.item.xml || (ev.target === ev.currentTarget && ev.offsetX < (isMobile.value ? 34 : 22))) toggle();
+      else if (isMobile.value && view.value.kind !== 'plan') detOpen.value = true;   // на телефоне тап по узлу открывает детали
     };
     const dbl = () => { if (!props.item.xml) toggle(); };
     // зажатая кнопка не выделяет текст, а выбирает строку под мышью (в том числе при протягивании)

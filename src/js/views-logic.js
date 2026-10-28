@@ -136,14 +136,29 @@ const LogicView = {
       v.value = { k, x: px - (px - o.x) * k / o.k, y: py - (py - o.y) * k / o.k };
     };
     let drag = null, moved = false;
-    const down = ev => { if (ev.button) return; drag = { sx: ev.clientX, sy: ev.clientY, x: v.value.x, y: v.value.y }; moved = false; };
+    // щипок двумя пальцами: масштаб вокруг центра между ними
+    const ptrs = new Map();
+    let pinch = null;
+    const pinchGeom = () => { const [a, b] = [...ptrs.values()], r = svg.value.getBoundingClientRect(); return { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, x: (a.x + b.x) / 2 - r.left, y: (a.y + b.y) / 2 - r.top }; };
+    const down = ev => {
+      if (ev.button) return;
+      ptrs.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+      if (ptrs.size === 2) { svg.value.setPointerCapture(ev.pointerId); drag = null; moved = true; pinch = { ...pinchGeom(), v: { ...v.value } }; return; }
+      drag = { sx: ev.clientX, sy: ev.clientY, x: v.value.x, y: v.value.y }; moved = false;
+    };
     const move = ev => {
+      if (ptrs.has(ev.pointerId)) ptrs.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+      if (pinch && ptrs.size === 2) {
+        const g = pinchGeom(), o = pinch.v, k = Math.min(4, Math.max(0.05, o.k * g.d / pinch.d));
+        v.value = { k, x: g.x - (pinch.x - o.x) * k / o.k, y: g.y - (pinch.y - o.y) * k / o.k };
+        return;
+      }
       if (!drag) return;
       const dx = ev.clientX - drag.sx, dy = ev.clientY - drag.sy;
       if (!moved && Math.abs(dx) + Math.abs(dy) > 3) { moved = true; svg.value.setPointerCapture(ev.pointerId); }
       if (moved) v.value = { ...v.value, x: drag.x + dx, y: drag.y + dy };
     };
-    const up = () => { drag = null; };
+    const up = ev => { ptrs.delete(ev.pointerId); if (ptrs.size < 2) pinch = null; drag = null; };
     // двойной клик по блоку — оставить только его путь (вверх и вниз) и выстроить заново; ещё раз — вернуть всё
     const focusOn = i => {
       const was = focus.value !== '', a = was && !lay.value.pos.has(i) ? focus.value : i, from = lay.value, o = from.pos.get(a);

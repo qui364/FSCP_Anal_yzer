@@ -19,10 +19,18 @@ const ask = o => new Promise(res => {
 const closeDlg = v => { const d = dlg.value; dlg.value = null; d && d.res(v); };
 
 // Левая навигация (бургер в верхней панели); состояние помнится
-const navOpen = ref((() => { try { return localStorage['fscp.nav'] !== '0'; } catch { return true; } })());
-const detOpen = ref((() => { try { return localStorage['fscp.det'] !== '0'; } catch { return true; } })());
-const toggleDet = () => { detOpen.value = !detOpen.value; try { localStorage['fscp.det'] = detOpen.value ? '1' : '0'; } catch {} };
-const toggleNav =() => { navOpen.value = !navOpen.value; try { localStorage['fscp.nav'] = navOpen.value ? '1' : '0'; } catch {} };
+// iOS серит файлы с неизвестным расширением (.fscp) в выборе, если задан accept — там фильтр не ставим
+const NO_ACCEPT = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const acc = list => NO_ACCEPT ? null : list;
+
+// Телефон (узкое окно): меню и детали — выезжающие панели, закрыты по умолчанию и не запоминаются
+const mobileMq = matchMedia('(max-width: 800px)');
+const isMobile = ref(mobileMq.matches);
+const navOpen = ref(!isMobile.value && (() => { try { return localStorage['fscp.nav'] !== '0'; } catch { return true; } })());
+const detOpen = ref(!isMobile.value && (() => { try { return localStorage['fscp.det'] !== '0'; } catch { return true; } })());
+mobileMq.addEventListener('change', e => { isMobile.value = e.matches; if (e.matches) { navOpen.value = false; detOpen.value = false; } });
+const toggleDet = () => { detOpen.value = !detOpen.value; if (!isMobile.value) try { localStorage['fscp.det'] = detOpen.value ? '1' : '0'; } catch {} };
+const toggleNav = () => { navOpen.value = !navOpen.value; if (!isMobile.value) try { localStorage['fscp.nav'] = navOpen.value ? '1' : '0'; } catch {} };
 
 // --- навигация: каждый переход создаёт новый view с id, по которому компонент пересоздаётся ---
 let navId = 0;

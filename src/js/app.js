@@ -45,7 +45,10 @@ const App = {
       clearLog();
       if (view.value.type === 'log' || view.value.type === 'loginfo') loaded.value ? openTree('dev') : go({ type: 'empty' });
     };
-    return { navIc, counts, logBusy, dlg, closeDlg, sideW, detW, active, tab, TABS, view, loading, error, loaded, welcome, building, navOpen, toggleNav, detOpen, toggleDet, archive, logData, logName, logTip, fpick, lpick, onFile, onLog, closeFile, closeLog };
+    // полноэкранный загрузчик: чтение архива, разбор XML, построение дерева, чтение журнала
+    const loaderText = computed(() => loading.value || (building.value ? 'Строю дерево…' : '') || logBusy.value);
+    const sideClick = e => { if (isMobile.value && e.target.closest('button')) navOpen.value = false; };
+    return { loaderText, acc, sideClick, isMobile, navIc, counts, logBusy, dlg, closeDlg, sideW, detW, active, tab, TABS, view, loading, error, loaded, welcome, building, navOpen, toggleNav, detOpen, toggleDet, archive, logData, logName, logTip, fpick, lpick, onFile, onLog, closeFile, closeLog };
   },
   template: `
 <div id="topbar" v-if="!welcome">
@@ -54,12 +57,12 @@ const App = {
   <span id="tbhead"></span>
   <span class="tbsp"></span>
   <button v-if="view.type === 'tree'" class="iconbtn tbright" :class="{ sel: detOpen }" title="Панель деталей" @click="toggleDet"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 4h14M2 9h14M2 14h14"/></svg></button>
-  <input ref="fpick" type="file" accept=".fscp,.zip" hidden @change="onFile">
-  <input ref="lpick" type="file" accept=".csv" multiple hidden @change="onLog">
+  <input ref="fpick" type="file" :accept="acc('.fscp,.zip')" hidden @change="onFile">
+  <input ref="lpick" type="file" :accept="acc('.csv')" multiple hidden @change="onLog">
 </div>
 <div id="shell" :style="{ '--sw': sideW + 'px', '--dw0': detW + 'px', '--dw': (view.type !== 'tree' || !detOpen ? 0 : detW) + 'px' }">
 <welcome-view v-if="welcome" />
-<div id="side" v-else :class="{ closed: !navOpen }" :inert="!navOpen">
+<div id="side" v-else :class="{ closed: !navOpen }" :inert="!navOpen" @click="sideClick">
   <div id="trees">
     <button class="buildbtn nm" :disabled="!!building" :title="loaded ? archive.name : ''" @click="fpick.click()"><span class="nmt"><span v-html="navIc('open')"></span>{{ loaded ? archive.name : 'Открыть файл…' }}</span><span v-if="loaded" class="nx" role="button" title="Закрыть файл" @click.stop="closeFile"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M1.5 1.5l7 7M8.5 1.5l-7 7"/></svg></span></button>
     <button v-for="[t, name] in TABS" :key="t" class="buildbtn child tint" :disabled="!loaded || !!building" :class="['c-' + t, { sel: active === t, sub: t === 'logic' }]" @click="tab(t)"><span class="nmt"><span v-html="navIc(t)"></span>{{ name }}</span><span v-if="counts[t] != null" class="cnt">{{ counts[t].toLocaleString('ru') }}</span></button>
@@ -71,6 +74,8 @@ const App = {
   <div id="sidebot">
     <button class="buildbtn" :class="{ sel: active === 'settings' }" @click="tab('settings')"><span class="nmt"><span v-html="navIc('set')"></span>Настройки</span></button>  </div>
 </div>
+<div id="loader" v-if="loaderText" role="status" aria-live="polite"><div class="ld"><i class="spin"></i><p>{{ loaderText }}</p></div></div>
+<div id="scrim" v-if="isMobile && navOpen && !welcome" @click="toggleNav"></div>
 <div v-if="dlg" class="modal" @click.self="closeDlg(false)">
   <div class="dlg" role="dialog" aria-modal="true">
     <h3>{{ dlg.title }}</h3>

@@ -30,7 +30,7 @@ const LogView = {
     const date = t => t ? new Date(t).toLocaleString('ru') : '—';
     const kindOf = r => ({ 1: 'dev', 2: 'zone', 6: 'delay' })[r.type] || '';   // JournalObjectType: 1 GKDevice, 2 GKZone, 6 GKDelay
     const onPick = () => { const fs = [...picker.value.files]; picker.value.value = ''; readLogs(fs); };
-    return { evName, evSev, evDesc, logData, logBusy, logErr, q, code, lim, objSet, objTitle, picker, list, shown, codes, date, kindOf, onPick, clearLog, openTree, all: () => { objSet.value = null; objTitle.value = ''; }, fmt };
+    return { acc, evName, evSev, evDesc, logData, logBusy, logErr, q, code, lim, objSet, objTitle, picker, list, shown, codes, date, kindOf, onPick, clearLog, openTree, all: () => { objSet.value = null; objTitle.value = ''; }, fmt };
   },
   template: `
 <Teleport to="#tbhead"><h2>Журнал событий</h2><span v-if="logData" class="m">{{ logData.rows.length }} событий из {{ logData.files.length }} файл.</span></Teleport>
@@ -38,7 +38,7 @@ const LogView = {
 <p v-if="logErr" class="warn">{{ logErr }}</p>
 <div class="bar">
   <button class="buildbtn" :disabled="!!logBusy" @click="picker.click()">Загрузить журнал (.csv)</button>
-  <input ref="picker" type="file" accept=".csv" multiple hidden @change="onPick"></div>
+  <input ref="picker" type="file" :accept="acc('.csv')" multiple hidden @change="onPick"></div>
 <div v-if="!logData" class="skel" aria-hidden="true" :title="logBusy ? '' : 'Журнал из ГК (CSV): выберите файлы или перетащите их в рамку слева'">
   <div class="bar"><i class="sk" style="width:300px;height:var(--ctl,32px)"></i><i class="sk" style="width:180px;height:var(--ctl,32px)"></i><i class="sk" style="width:90px"></i></div>
   <div v-for="n in 9" :key="n" class="skr"><i class="sk" style="width:130px"></i><i class="sk" :style="{ width: (30 + n * 37 % 30) + '%' }"></i><i class="sk" style="width:110px"></i></div>

@@ -225,15 +225,27 @@ const PlanCanvas = {
     };
     const pos = e => { const r = css(); return [e.clientX - r.left, e.clientY - r.top]; };
     const onWheel = e => { const [x, y] = pos(e); zoomAt(x, y, Math.exp(-e.deltaY * (e.deltaMode ? 0.05 : 0.0015))); };
+    // щипок двумя пальцами: масштаб вокруг центра между ними и сдвиг
+    const ptrs = new Map();
+    let pinch = null;
+    const pinchGeom = () => { const [a, b] = [...ptrs.values()], r = css(); return { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, x: (a.x + b.x) / 2 - r.left, y: (a.y + b.y) / 2 - r.top }; };
     const onDown = e => {
       if (!img) return;
       cv.value.focus(); cv.value.setPointerCapture(e.pointerId);
+      ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (ptrs.size === 2) { drag = null; tip.value = null; pinch = { ...pinchGeom(), scale, ox, oy }; return; }
+      if (e.pointerType === 'touch') { const [x, y] = pos(e); hover = hit(x, y); }   // у касания нет предварительного pointermove
       if (canEdit.value && e.button === 2) { delVertex(...pos(e)); return; }   // правая кнопка — удалить вершину
       if (canEdit.value && e.button === 0) { const d = editDown(...pos(e), e); if (d) { drag = d; return; } }
       drag = { x: e.clientX, y: e.clientY, ox, oy, moved: false };
     };
     const onCtx = e => { if (canEdit.value) e.preventDefault(); };
     const onMove = e => {
+      if (ptrs.has(e.pointerId)) ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pinch && ptrs.size === 2) {
+        const g = pinchGeom(), ns = Math.min(Math.max(pinch.scale * g.d / pinch.d, fit * 0.1), 64), k = ns / pinch.scale;
+        scale = ns; ox = g.x - (pinch.x - pinch.ox) * k; oy = g.y - (pinch.y - pinch.oy) * k; fitOn.value = false; redraw(); return;
+      }
       if (drag?.edit) { editMove(e); return; }
       if (drag) {
         if (!drag.moved && Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 4) return;
@@ -245,6 +257,8 @@ const PlanCanvas = {
       tip.value = h ? { x: x + 14, y: y + 14, text: h.desc ? h.label + '\n' + h.desc : h.label } : null;
     };
     const onUp = e => {
+      ptrs.delete(e.pointerId);
+      if (pinch) { if (ptrs.size < 2) pinch = null; drag = null; return; }
       const d = drag; drag = null; if (cv.value) cv.value.style.cursor = hover?.kind ? 'pointer' : '';
       if (d?.edit) { editUp(d, e); return; }
       if (d && !d.moved && canEdit.value && esel.value) { esel.value = null; redraw(); }
