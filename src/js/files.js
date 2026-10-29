@@ -1,4 +1,3 @@
-// --- байты и текст ---
 function sniff(b) {
   const s = (...a) => a.every((x, i) => b[i] === x);
   if (s(0x50, 0x4b, 3, 4)) return 'ZIP';
@@ -9,7 +8,7 @@ function sniff(b) {
   if (s(0x1f, 0x8b)) return 'gzip';
   if (s(0x25, 0x50, 0x44, 0x46)) return 'PDF';
   if (b.length > 8 && String.fromCharCode(...b.slice(4, 8)) === 'ftyp') return 'video/mp4';
-  try {   // валидный UTF-8 без управляющих байтов (хвост может обрезать символ — stream)
+  try {
     const s = new TextDecoder('utf-8', { fatal: true }).decode(b.slice(0, 2048), { stream: true });
     if (!/[\x00-\x08\x0e-\x1f]/.test(s)) return 'text';
   } catch {}
@@ -26,7 +25,6 @@ function hex(b) {
   return out;
 }
 
-// Целые строки вокруг совпадения, общий отступ срезан
 function context(t, i) {
   let a = i;
   for (let k = 0; k < 4 && a > 0; k++) a = a > 1 ? t.lastIndexOf('\n', a - 2) + 1 : 0;
@@ -39,7 +37,6 @@ function context(t, i) {
   return lines.map(l => l.slice(ind).slice(0, 200)).join('\n');
 }
 
-// Где GUID упоминается в XML-конфигурациях: [{file, n, shown:[{line, parts}]}], parts — текст вокруг GUID
 async function findRefs(guid) {
   const out = [];
   const key = guid.toLowerCase();
@@ -53,9 +50,7 @@ async function findRefs(guid) {
   }
   return out;
 }
-// большие тексты, подгруженные только ради поиска ссылок, из памяти убираем (повторный поиск прочтёт заново)
 function dropText(name) { delete S.xmlTexts[name]; delete S.guidIdx[name]; delete S.lineCache[name]; }
-// один проход регуляркой по файлу: GUID (в нижнем регистре) -> смещения вхождений; дальше поиск без indexOf по 25 МБ
 function guidIndex(name, t) {
   if (S.guidIdx[name]) return S.guidIdx[name];
   const m = new Map();
@@ -66,7 +61,6 @@ function guidIndex(name, t) {
   return S.guidIdx[name] = m;
 }
 
-// --- индекс строк для режима «Исходник» ---
 const LH = 18;
 function lineIndex(name, t) {
   if (S.lineCache[name]) return S.lineCache[name];
@@ -75,13 +69,12 @@ function lineIndex(name, t) {
   while ((i = t.indexOf('\n', i + 1)) !== -1) a.push(i + 1);
   return S.lineCache[name] = a;
 }
-function lineOf(starts, pos) {          // номер строки (с 1) для смещения pos
+function lineOf(starts, pos) {
   let lo = 0, hi = starts.length - 1;
   while (lo < hi) { const m = (lo + hi + 1) >> 1; if (starts[m] <= pos) lo = m; else hi = m - 1; }
   return lo + 1;
 }
 
-// --- XML-дерево (сырой файл) ---
 function xmlItem(n, i) {
   const count = n.childElementCount;
   return {

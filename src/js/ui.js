@@ -1,4 +1,3 @@
-// --- состояние каждого дерева до закрытия архива. Узлы идентифицируются путём pk = /key/key/... ---
 function makeTreeState(key) {
   const fresh = !S.treeStates.has(key);
   if (fresh) {
@@ -18,7 +17,6 @@ async function scrollToPk(pk) {
   document.querySelector(`[data-pk="${pk}"]`)?.scrollIntoView({ block: 'center' });
 }
 
-// узел дерева: ленивые дети; предок, встреченный повторно, рисуется листом «цикл»
 const TreeNode = {
   name: 'TreeNode',
   props: { item: Object, parentPk: String, anc: Object },
@@ -27,7 +25,6 @@ const TreeNode = {
     const pk = computed(() => props.parentPk + '/' + props.item.key);
     const cyc = computed(() => !props.item.xml && props.anc.has(props.item.key));
     const isOpen = computed(() => st.open.has(pk.value));
-    // у XML-узлов число детей известно заранее (count), поэтому items детей строим только при раскрытии
     const kids = computed(() => cyc.value || (props.item.count != null && !isOpen.value) ? [] : (props.item._k ||= props.item.kids()));
     const count = computed(() => cyc.value ? 0 : props.item.count ?? kids.value.length);
     const next = computed(() => new Set(props.anc).add(props.item.key));
@@ -35,20 +32,17 @@ const TreeNode = {
       if (!count.value) return;
       if (isOpen.value) st.open.delete(pk.value); else st.open.add(pk.value);
     };
-    // реестр для клавиатурной навигации (TreeView.onKey)
     const me = { item: props.item, toggle, count: () => count.value, isOpen: () => isOpen.value };
     st.reg.set(pk.value, me);
     onBeforeUnmount(() => { if (st.reg.get(pk.value) === me) st.reg.delete(pk.value); });
-    // клик — выбор; раскрытие — по стрелке слева или двойным кликом (в XML — любым кликом)
     const click = ev => {
       st.select(pk.value, props.item);
       if (props.item.xml || (ev.target === ev.currentTarget && ev.offsetX < (isMobile.value ? 34 : 22))) toggle();
     };
     const dbl = () => {
-      if (isMobile.value) { if (view.value.kind !== 'plan') detOpen.value = true; return; }   // на телефоне двойной тап по узлу открывает детали
+      if (isMobile.value) { if (view.value.kind !== 'plan') detOpen.value = true; return; }
       if (!props.item.xml) toggle();
     };
-    // зажатая кнопка не выделяет текст, а выбирает строку под мышью (в том числе при протягивании)
     const md = ev => {
       if (ev.button !== 0) return;
       ev.preventDefault();
@@ -81,7 +75,6 @@ const TreeNode = {
 </div>`,
 };
 
-// таблица деталей выбранного узла
 const DetailTable = {
   props: { rows: Array },
   setup() {
@@ -92,7 +85,6 @@ const DetailTable = {
       else if (it.open) openFile(it.open);
       else if (it.log) openLog(it.log, it.logTitle);
     };
-    // «файл:строка» — многоточие в середине имени файла, номер строки всегда виден
     const split = l => { const i = l.lastIndexOf(':'); return i > 0 ? [l.slice(0, i), l.slice(i)] : [l, '']; };
     return { act, split };
   },
@@ -132,7 +124,6 @@ const LogicNode = {
 </div>`,
 };
 
-// заголовок файла: имя, папка в архиве, размер (+ доп. сведения)
 const FileHead = {
   props: { name: String, extra: String },
   setup(props) {
@@ -147,32 +138,27 @@ const FileHead = {
   template: `<h2>{{ base }}</h2><p class="m">{{ parts.join(' · ') }}</p>`,
 };
 
-// ============================ ширины панелей (фиксированные) ============================
 
-const defW = () => Math.round(innerWidth / 4); // пропорция 1:2:1
-const PANEL_W = 350;   // ширина левой и правой панелей по умолчанию
-const savedW = k => { try { const v = +localStorage.getItem(k); if (v >= 200 && v <= innerWidth / 2) return v; } catch { /* нет storage */ } return PANEL_W; };
+const defW = () => Math.round(innerWidth / 4);
+const PANEL_W = 350;
+const savedW = k => { try { const v = +localStorage.getItem(k); if (v >= 200 && v <= innerWidth / 2) return v; } catch {  } return PANEL_W; };
 const sideW = ref(savedW('fscp.sideW')), detW = ref(savedW('fscp.detW')), planW = ref(defW());
-// разделитель панели: sign 1 — левая (тянем вправо — шире), -1 — правая (тянем влево — шире); утянули уже 120px — панель сворачивается, как кнопкой (collapse)
 const startPanelRz = (e, w, key, sign, collapse) => {
   const x0 = e.clientX, w0 = w.value, el = e.currentTarget;
   el.setPointerCapture(e.pointerId);
   document.body.classList.add('rzing');
   const mv = ev => { w.value = Math.max(0, Math.min(innerWidth / 2, w0 + sign * (ev.clientX - x0))); };
-  const up = () => { document.body.classList.remove('rzing'); if (w.value < 120) { w.value = w0; collapse(); } else w.value = Math.max(200, w.value); try { localStorage.setItem(key, String(w.value)); } catch { /* без storage */ } el.removeEventListener('pointermove', mv); el.removeEventListener('pointerup', up); el.removeEventListener('pointercancel', up); };
+  const up = () => { document.body.classList.remove('rzing'); if (w.value < 120) { w.value = w0; collapse(); } else w.value = Math.max(200, w.value); try { localStorage.setItem(key, String(w.value)); } catch {  } el.removeEventListener('pointermove', mv); el.removeEventListener('pointerup', up); el.removeEventListener('pointercancel', up); };
   el.addEventListener('pointermove', mv); el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
 };
-// двойной клик по разделителю — ширина по умолчанию
-const resetW = (w, key, def) => { w.value = def; try { localStorage.removeItem(key); } catch { /* без storage */ } };
+const resetW = (w, key, def) => { w.value = def; try { localStorage.removeItem(key); } catch {  } };
 const sideDbl = () => resetW(sideW, 'fscp.sideW', PANEL_W), detDbl = () => resetW(detW, 'fscp.detW', PANEL_W);
 const planDbl = () => { resetW(planW, 'fscp.planW', defW()); planWSet = false; };
 const sideRz = e => startPanelRz(e, sideW, 'fscp.sideW', 1, toggleNav), detRz = e => startPanelRz(e, detW, 'fscp.detW', -1, toggleDet);
 let planWSet = false;
-try { const v = +localStorage.getItem('fscp.planW'); if (v >= 200 && v <= innerWidth - 300) { planW.value = v; planWSet = true; } } catch { /* нет storage — ширина по умолчанию */ }
-// Окно меняет размер (Mini App Telegram открывается малым и разворачивается): дерево планов без ручной ширины следует за ним
+try { const v = +localStorage.getItem('fscp.planW'); if (v >= 200 && v <= innerWidth - 300) { planW.value = v; planWSet = true; } } catch {  }
 addEventListener('resize', () => { if (!planWSet) planW.value = defW(); });
 
-// горизонтальная прокрутка без полосы: перетаскивание, колесо, затухание по краям, при обновлении — к концу
 const hscroll = {
   mounted(el) {
     const edge = () => { el.classList.toggle('fl', el.scrollLeft > 1); el.classList.toggle('fr', el.scrollLeft + el.clientWidth < el.scrollWidth - 1); };
@@ -190,7 +176,6 @@ const hscroll = {
   unmounted(el) { removeEventListener('pointermove', el._pm); removeEventListener('pointerup', el._pu); el._ro.disconnect(); }
 };
 
-// клавиатура (дерево в фокусе): ↑↓ ←→ Home End PgUp PgDn Enter Space
 function treeOnKey(st, ev) {
   if (ev.altKey || ev.ctrlKey || ev.metaKey) return;
   const el = ev.currentTarget, rows = [...el.querySelectorAll('.row[data-pk]')];

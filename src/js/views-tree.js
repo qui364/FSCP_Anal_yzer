@@ -1,4 +1,3 @@
-// прикладное дерево (устройства / зоны / сценарии / планы) + панель деталей
 const TreeView = {
   props: { kind: String, sel: String },
   setup(props) {
@@ -7,18 +6,17 @@ const TreeView = {
     provide('tree', st);
     const { query, found, mode, search } = st;
     const kidsOf = it => it._k ||= it.kids();
-    // плоский список устройств с отличиями от параметров по умолчанию (вместо дерева)
     const diff = st.diff, diffItems = shallowRef(null), diffCount = ref(null);
     const flat = () => diffItems.value ||= [...m.dev.values()].map(d => devItem(d, true)).filter(it => it.paramInfo.changed);
     const base = () => props.kind === 'dev' && diff.value ? flat() : def.roots;
     let gone = false;
     onBeforeUnmount(() => { gone = true; });
-    if (props.kind === 'dev') {   // число устройств с отличиями считаем порциями в простое, чтобы не блокировать интерфейс
+    if (props.kind === 'dev') {
       const list = [...m.dev.values()], acc = [];
       let i = 0;
       const step = () => {
         if (gone) return;
-        if (diffItems.value) { diffCount.value = diffItems.value.length; return; }   // список уже построен целиком (включён режим «только с отличиями»)
+        if (diffItems.value) { diffCount.value = diffItems.value.length; return; }
         for (const end = Math.min(i + 200, list.length); i < end; i++) { const it = devItem(list[i], true); if (it.paramInfo.changed) acc.push(it); }
         if (i < list.length) idle(step); else { diffItems.value = acc; diffCount.value = acc.length; }
       };
@@ -34,7 +32,7 @@ const TreeView = {
     };
 
     if (st.fresh && def.roots.length === 1) st.open.add(pkOf(def.roots));
-    if (st.fresh && props.kind === 'dev') {   // РСГК раскрываем сразу (он и сам может быть корнем, и ребёнком раскрытого корня)
+    if (st.fresh && props.kind === 'dev') {
       const root = def.roots[0];
       const isRsgk = it => DRIVERS[txt(m.dev.get(it.key), 'DriverUID')]?.[0] === 'РСГК';
       if (isRsgk(root)) st.open.add(pkOf([root]));
@@ -49,7 +47,6 @@ const TreeView = {
       found.value = `${search.hi + 1} из ${search.hits.length}${search.hits.length >= 200 ? '+' : ''}`;
       reveal(search.hits[search.hi]);
     };
-    // фильтр: оставляет совпавшие узлы и их предков, предков раскрывает
     const roots = shallowRef(base());
     const filterTree = (items, pred, anc, pk, cnt, expand) => {
       const out = [];
@@ -78,7 +75,6 @@ const TreeView = {
     if (props.sel) {
       const h = findPaths(base(), it => it.key === props.sel, 1)[0];
       if (h) {
-        // Явный переход по ссылке должен показать объект, даже если его скрывает сохранённый фильтр.
         if (mode.value === 'filter' && !findPaths(roots.value, it => it.key === props.sel, 1).length) { query.value = ''; applyFilter(); }
         reveal(h);
       }
@@ -114,7 +110,6 @@ const TreeView = {
       return blocks;
     });
     const logic = computed(() => selItem.value?.logic?.() || null);
-    // сценарии, в которых участвует выбранный объект (для сценария — те, в чьих условиях он упомянут)
     const partOf = computed(() => {
       const it = selItem.value, m = model.value;
       if (!it || def.title !== 'Сценарии') return null;
@@ -123,7 +118,6 @@ const TreeView = {
       return list.length ? { items: list.map(x => ({ label: delayLabel(x), goto: 'delay:' + txt(x, 'UID') })) } : null;
     });
     const goLogic = g => { const [kind, ...u] = g.split(':'); openTree(kind, u.join(':')); };
-    // хлебные крошки: путь выбранного узла от корня (pk = '/ключ/ключ/...')
     const crumbs = computed(() => {
       const keys = (st.sel.value || '').split('/').slice(1), path = [];
       let level = base();
@@ -136,9 +130,7 @@ const TreeView = {
       return path;
     });
     const goCrumb = i => reveal(crumbs.value.slice(0, i + 1));
-    // план для холста: выбранный узел или ближайший план-предок
     const planUid = computed(() => { const c = crumbs.value; for (let i = c.length - 1; i >= 0; i--) if (c[i].k === 'plan') return String(c[i].key); return ''; });
-    // клик по элементу холста: выделяем объект в дереве плана (путь через текущий план)
     const onPick = uid => {
       const h = findPaths(def.roots, it => it.key === uid && it.k !== 'plan', 200).find(p => p.some(i => i.key === planUid.value));
       if (h) { if (mode.value === 'filter' && query.value) { query.value = ''; applyFilter(false); } reveal(h); }
@@ -147,7 +139,7 @@ const TreeView = {
       const x0 = e.clientX, w0 = planW.value, el = e.currentTarget;
       el.setPointerCapture(e.pointerId);
       const mv = ev => { planW.value = Math.max(200, Math.min(innerWidth - 300, w0 + ev.clientX - x0)); };
-      const up = () => { planWSet = true; try { localStorage.setItem('fscp.planW', String(planW.value)); } catch { /* без storage */ } el.removeEventListener('pointermove', mv); el.removeEventListener('pointerup', up); el.removeEventListener('pointercancel', up); };
+      const up = () => { planWSet = true; try { localStorage.setItem('fscp.planW', String(planW.value)); } catch {  } el.removeEventListener('pointermove', mv); el.removeEventListener('pointerup', up); el.removeEventListener('pointercancel', up); };
       el.addEventListener('pointermove', mv); el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
     };
     const collapseAll = () => { st.open.clear(); st.select('', null); };

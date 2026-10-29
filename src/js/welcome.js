@@ -1,8 +1,6 @@
-// Главная страница: заголовок и рамка для файла (показывается, пока ничего не загружено)
 const WelcomeView = {
   setup() {
     const over = ref(false), picker = ref(null);
-    // .csv — журнал событий, остальное — архив конфигурации
     const take = fs => {
       fs = [...fs];
       const csv = fs.filter(f => /\.csv$/i.test(f.name)), rest = fs.filter(f => !/\.csv$/i.test(f.name));

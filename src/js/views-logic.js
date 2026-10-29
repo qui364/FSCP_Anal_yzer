@@ -1,4 +1,3 @@
-// страница «Логика» (дочерний пункт «Сценарии»): граф «устройства зон → зоны → сценарии → исполнители», схлопнутый в группы по шаблону имени
 const GK_NAME = { i: 'Устройство зоны', z: 'Зона', d: 'Сценарий', o: 'Исполнитель' };
 const gkClass = n => n.kind === 'z' ? 'zone' : n.kind === 'd' ? 'delay' : 'dev';
 
@@ -7,7 +6,6 @@ function buildLogicGroups() {
   const m = model.value;
   if (m.lgroups) return m.lgroups;
   const g = buildGraph(), gi = new Map(), groups = [], emap = new Map(), of = new Map();
-  // ШУН-В и МДУ делятся на ДП / ДВ / ОЗК: по описанию устройства, иначе по имени сценария, где оно исполнитель
   const SUB = /(?<![А-ЯЁа-яё])(ДП|ДВ|ОЗК)/;
   const subOf = n => {
     const x = SUB.exec((txt(m.dev.get(n.uid), 'Description') || '').toUpperCase());
@@ -22,10 +20,9 @@ function buildLogicGroups() {
   };
   const devGroup = n => { const r = devName(m.dev.get(n.uid)); if (n.kind === 'o' && r === 'МВК') return ('МВК ' + mvkOf(n)).trim(); return n.kind === 'o' && (r === 'ШУН-В' || /^МДУ/.test(r)) ? (r + ' ' + subOf(n)).trim() : r; };
   const tpl = n => n.label.replace(/^\[[^\]]*\]\s*/, '').replace(L3_ND, '№').replace(/\s+/g, ' ').trim();
-  // устройства делятся ещё и по набору связанных сценариев (по шаблону имени): в группу «РМ» попадают только РМ с одинаковыми связями
   const tplN = new Map();
   for (const x of g.nodes) if (x.kind === 'd') { const t = tpl(x); tplN.set(t, (tplN.get(t) || 0) + 1); }
-  const real = x => x.label.replace(/^\[[^\]]*\]\s*/, '').trim();   // шаблон с «№» нужен, только если под ним несколько сценариев
+  const real = x => x.label.replace(/^\[[^\]]*\]\s*/, '').trim();
   const sig = n => [...new Set((n.kind === 'i' ? n.out : n.in).filter(b => g.nodes[b].kind === 'd').map(b => tplN.get(tpl(g.nodes[b])) === 1 ? real(g.nodes[b]) : tpl(g.nodes[b])))].sort().join('|');
   const grp = n => {
     const dv = n.kind === 'i' || n.kind === 'o', raw = dv ? devGroup(n) : tpl(n);
@@ -36,11 +33,8 @@ function buildLogicGroups() {
     return k;
   };
   g.nodes.forEach((n, i) => {
-    // устройства зон входят в схему только если участвуют в условиях сценариев напрямую
     if (n.kind === 'i' ? n.out.some(b => g.nodes[b].kind === 'd') : n.in.length || n.out.length) of.set(i, grp(n));
   });
-  // подпись «← сценарии» нужна только когда в слое несколько групп с одним именем
-  // у группы из одного сценария/зоны «№» вместо числа не нужен — показываем настоящее имя
   for (const x of groups) if ((x.kind === 'd' || x.kind === 'z') && x.members.length === 1) x.label = x.members[0].label.replace(/^\[[^\]]*\]\s*/, '').trim() || x.label;
   const same = new Map();
   for (const x of groups) { const k = x.layer + ':' + x.label; same.set(k, (same.get(k) || 0) + 1); }
@@ -69,7 +63,7 @@ function buildLogicGroups() {
   return (m.lgroups = { groups, edges, cols });
 }
 
-let logicSaved = null;   // состояние схемы между заходами (масштаб/сдвиг, фокус, раскрытые блоки); действует, пока открыт тот же архив
+let logicSaved = null;
 const LogicView = {
   setup() {
     const g = buildLogicGroups(), sv = logicSaved?.g === g ? logicSaved : null;
@@ -77,15 +71,13 @@ const LogicView = {
     const ls = (k, d) => { try { return localStorage.getItem('fscp.l3' + k) || d; } catch (e) { return d; } };
     const animOn = ref(ls('Anim', '1') === '1'), align = ref(ls('Align', 'center'));
     const COLW = 250, NW = 190, NH = 34, GAP = 8, PAD = 16;
-    // раскладка: subset (Set индексов групп) или null — все; пустые колонки схлопываются, колонка центрируется по высоте
     const LH = 34, MAXL = 40;
     const descOf = m => m.more || (m.kind !== 'i' && m.kind !== 'o') ? '' : (txt(model.value.dev.get(m.uid), 'Description') || '').trim();
     const listOf = i => { const m = g.groups[i].members; return more.value.has(i) || m.length <= MAXL ? m : [...m.slice(0, MAXL), { more: true, label: '… и ещё ' + (m.length - MAXL) }]; };
-    let fs = null;   // текущее подмножество раскладки (фокус)
+    let fs = null;
     const layout = subset => {
       fs = subset;
       const cols = g.cols.map(c => subset ? c.filter(x => subset.has(g.groups.indexOf(x))) : c).filter(c => c.length);
-      // раскрытый блок (список состава) сдвигает вниз остальные блоки своего столбца
       const hs = cols.map(c => c.map(x => { const i = g.groups.indexOf(x); return NH + GAP + (openI.value.has(i) ? listOf(i).length * LH + 8 : 0); }));
       const tot = hs.map(h => h.reduce((s, x) => s + x, 0) - GAP), colH = Math.max(NH, ...tot), pos = new Map();
       cols.forEach((c, ci) => { let y = PAD + (colH - tot[ci]) * ({ top: 0, center: 0.5, bottom: 1 }[align.value]); c.forEach((x, i) => { pos.set(g.groups.indexOf(x), { x: PAD + ci * COLW, y }); y += hs[ci][i]; }); });
@@ -97,7 +89,6 @@ const LogicView = {
     };
     const lay = shallowRef(layout(null)), focus = ref(''), anim = shallowRef({ from: lay.value, to: lay.value, t: 1 });
     const ease = x => x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
-    // сцена: позиции и прозрачность интерполируются между старой и новой раскладкой (вошедшие проявляются, ушедшие гаснут)
     const scene = computed(() => {
       const { from, to, t } = anim.value, e = ease(t), lerp = (a, b) => a + (b - a) * e;
       const posOf = i => { const a = from.pos.get(i), b = to.pos.get(i); return a && b ? { x: lerp(a.x, b.x), y: lerp(a.y, b.y) } : a || b; };
@@ -128,7 +119,7 @@ const LogicView = {
     onBeforeUnmount(() => cancelAnimationFrame(raf));
     const sel = computed(() => pin.value !== '' ? pin.value : hov.value);
     const walk = (s, dir) => { const r = new Set([s]), q = [s]; while (q.length) { const x = q.pop(); for (const y of g.groups[x][dir]) if (!r.has(y)) { r.add(y); q.push(y); } } return r; };
-    if (sv && sv.focus !== '') {   // восстановить фокус на пути блока
+    if (sv && sv.focus !== '') {
       focus.value = sv.focus;
       lay.value = layout(new Set([...walk(sv.focus, 'out'), ...walk(sv.focus, 'in')]));
       anim.value = { from: lay.value, to: lay.value, t: 1 };
@@ -144,7 +135,6 @@ const LogicView = {
       v.value = { k, x: px - (px - o.x) * k / o.k, y: py - (py - o.y) * k / o.k };
     };
     let drag = null, moved = false;
-    // щипок двумя пальцами: масштаб вокруг центра между ними
     const ptrs = new Map();
     let pinch = null;
     const pinchGeom = () => { const [a, b] = [...ptrs.values()], r = svg.value.getBoundingClientRect(); return { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, x: (a.x + b.x) / 2 - r.left, y: (a.y + b.y) / 2 - r.top }; };
@@ -167,17 +157,15 @@ const LogicView = {
       if (moved) v.value = { ...v.value, x: drag.x + dx, y: drag.y + dy };
     };
     const up = ev => { ptrs.delete(ev.pointerId); if (ptrs.size < 2) pinch = null; drag = null; };
-    // двойной клик по блоку — оставить только его путь (вверх и вниз) и выстроить заново; ещё раз — вернуть всё
     const focusOn = i => {
       const was = focus.value !== '', a = was && !lay.value.pos.has(i) ? focus.value : i, from = lay.value, o = from.pos.get(a);
       if (!was) { const f = new Set([...walk(i, 'out'), ...walk(i, 'in')]); focus.value = i; lay.value = layout(f); }
       else { focus.value = ''; lay.value = layout(null); }
       pin.value = was ? '' : i;
-      const n = lay.value.pos.get(a), s = v.value.k;   // блок под курсором остаётся на месте экрана
+      const n = lay.value.pos.get(a), s = v.value.k;
       const v0 = v.value, v1 = o && n ? { k: s, x: v0.x + (o.x - n.x) * s, y: v0.y + (o.y - n.y) * s } : v0;
       animate(from, lay.value, v0, v1);
     };
-    // списки состава открываются и закрываются независимо (по клику на число), сами не закрываются; закрытие — с анимацией
     const isOpen = i => openI.value.has(i), leaving = i => closing.value.has(i);
     const setOpen = (i, all) => {
       const from = lay.value, o = new Set(openI.value), mo = new Set(more.value), cl = new Set(closing.value);
@@ -199,9 +187,8 @@ const LogicView = {
       const r = svg.value.getBoundingClientRect(), L = lay.value, k = Math.min(r.width / L.W, r.height / L.H, 1.5);
       animate(lay.value, lay.value, v.value, { k, x: (r.width - L.W * k) / 2, y: (r.height - L.H * k) / 2 });
     };
-    // при заходе схема сразу вписывается в экран (иначе видна только левая часть)
     onMounted(() => {
-      if (!svg.value || sv) return;   // сохранённый вид не трогаем
+      if (!svg.value || sv) return;
       const r = svg.value.getBoundingClientRect(), L = lay.value, k = Math.min(r.width / L.W, r.height / L.H, 1.5);
       if (k > 0) v.value = { k, x: (r.width - L.W * k) / 2, y: (r.height - L.H * k) / 2 };
     });

@@ -1,5 +1,4 @@
-// проверка журнала по конфигурации: «лишние» включения исполнителей, эпизоды, повторы (расчёт — check.js)
-let chkSaved = null;   // состояние страницы между заходами: раскрытые эпизоды, «Ещё 200», прокрутка; действует, пока те же журнал и конфигурация
+let chkSaved = null;
 const CheckView = {
   setup() {
     const res = shallowRef(null), busy = ref(''), open = ref(new Set()), lim = ref(200);
@@ -19,7 +18,7 @@ const CheckView = {
     const date = t => new Date(t).toLocaleString('ru'), time = t => new Date(t).toLocaleTimeString('ru');
     const toggle = i => { const s = new Set(open.value); s.has(i) ? s.delete(i) : s.add(i); open.value = s; };
     const eps = computed(() => res.value ? res.value.eps.filter(e => e.key).reverse() : []);
-    const on = e => { const m = new Map(); for (const it of e.items) { const d = model.value && model.value.dev.get(it.u), dr = d && DRIVERS[txt(d, 'DriverUID')], n = dr ? dr[0] : 'устройство'; m.set(n, (m.get(n) || 0) + 1); } return [...m].sort((a, b) => b[1] - a[1]); };   // что включилось: типы устройств и число
+    const on = e => { const m = new Map(); for (const it of e.items) { const d = model.value && model.value.dev.get(it.u), dr = d && DRIVERS[txt(d, 'DriverUID')], n = dr ? dr[0] : 'устройство'; m.set(n, (m.get(n) || 0) + 1); } return [...m].sort((a, b) => b[1] - a[1]); };
     const kinds = e => 'Включено ' + e.n + ': ' + Object.entries(e.kinds).map(([k, v]) => `${CHK_CLS[k]} — ${v}`).join('; ');
     const objDesc = u => { const d = model.value && model.value.dev.get(u); return d ? txt(d, 'Description') : ''; };
     const lineFaults = e => { const re = new RegExp('(^|[^\\d.])' + e.loop.line.replace(/\./g, '\\.') + '\\.'); return e.pre.filter(x => x[1] === 'fault' && re.test(x[3])); };
@@ -33,8 +32,8 @@ const CheckView = {
     const scState = x => x.mode === 'm' ? 'был в ручном режиме' : x.act ? 'был в состоянии «Включено»' : x.mode !== 'o' && x.st ? 'был в состоянии «' + (EVENTS[x.st] || x.st) + '»' : x.mode === 'o' ? 'был в состоянии «Отключено»' : 'был в состоянии «Выключено»';
     const stOf = (e, u) => { const x = e.sc.find(y => y.u === u); return x ? scState(x).replace('был ', '') : ''; };
     const scOn = x => 'исполнители включились: ' + x.on + ' из ' + x.tot + (x.mode !== 'a' || !x.act ? ' — по сценарию так не бывает' : '');
-    const als = line => { if (!model.value) return null; for (const d of model.value.dev.values()) if (txt(d, 'DriverUID') === '4d5647df-a278-48f6-9f89-19e4d51b7711' && devAddr(d) === line) return { u: txt(d, 'UID'), l: devLabel(d) }; return null; };   // линия АЛС из дерева
-    const objLabel = (k, u, n) => { const el = model.value && model.value[k].get(u); return el ? (k === 'dev' ? devLabel(el) : k === 'zone' ? zoneLabel(el) : delayLabel(el)) : n; };   // подпись как в дереве
+    const als = line => { if (!model.value) return null; for (const d of model.value.dev.values()) if (txt(d, 'DriverUID') === '4d5647df-a278-48f6-9f89-19e4d51b7711' && devAddr(d) === line) return { u: txt(d, 'UID'), l: devLabel(d) }; return null; };
+    const objLabel = (k, u, n) => { const el = model.value && model.value[k].get(u); return el ? (k === 'dev' ? devLabel(el) : k === 'zone' ? zoneLabel(el) : delayLabel(el)) : n; };
     const timeline = e => {
       const out = [], dis = new Map();
       for (const x of e.sc) for (const u of x.up || []) if (u.mode === 'o') dis.set(u.u, u);
@@ -42,7 +41,7 @@ const CheckView = {
       const nodes = [...[...dis.values()].filter(u => !su.has(u.u)).map(u => ({ u: u.u, o: { t: 0, col: '#8a8f98', up: u } })), ...shown.map(x => ({ u: x.u, par: (x.up || []).find(a => dis.has(a.u) && !su.has(a.u) || su.has(a.u)), o: { t: 0, col: '#8a8f98', sc: x, res: true } }))];
       const kids = new Map(), roots = [];
       for (const n of nodes) { const pu = n.par && n.par.u; if (pu && nodes.some(m => m.u === pu)) (kids.get(pu) || kids.set(pu, []).get(pu)).push(n); else roots.push(n); }
-      const walk = (n, d) => { out.push({ ...n.o, d: Math.min(4, d) }); for (const c of kids.get(n.u) || []) walk(c, d + 1); };   // старший → подчинённые прямо под ним
+      const walk = (n, d) => { out.push({ ...n.o, d: Math.min(4, d) }); for (const c of kids.get(n.u) || []) walk(c, d + 1); };
       roots.forEach(n => walk(n, 0));
       const lf = e.loop ? lineFaults(e) : [];
       if (e.loop && !lf.length) out.push({ t: 0, col: '#8a8f98', mut: true, text: 'Неисправностей линии ' + e.loop.line + ' за час до эпизода не было' });
@@ -64,7 +63,7 @@ const CheckView = {
       out.push(...fl);
       out.push(...rest);
       const grp = x => x.sc || x.up ? 0 : x.mut || x.col === laneCol.fault ? 1 : 2;
-      out.forEach((x, i) => { x.gap = i > 0 && grp(x) !== grp(out[i - 1]); });   // пустое место между блоками
+      out.forEach((x, i) => { x.gap = i > 0 && grp(x) !== grp(out[i - 1]); });
       return out;
     };
     return { als, objLabel, stOf, scState, scOn, timeline, lineFaults, laneCol, tlText, res, busy, open, lim, eps, logData, loaded, CHK_CLS, date, time, objDesc, toggle, kinds, on, openTree };

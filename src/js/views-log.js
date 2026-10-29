@@ -1,5 +1,4 @@
-// журнал событий: фильтры по тексту, коду события и объекту (список ObjectUID из панели деталей)
-let logSaved = null;   // фильтры, «Ещё N» и прокрутка между заходами (пока тот же журнал); переход по ссылке с объектом открывает свежий вид
+let logSaved = null;
 const LogView = {
   props: { uids: Array, title: String },
   setup(props) {
@@ -12,7 +11,6 @@ const LogView = {
       if (!objSet.value) return L.rows;
       return objSet.value.size === 1 ? (L.byObj.get([...objSet.value][0]) || []) : L.rows.filter(r => objSet.value.has(r.obj));
     });
-    // строка для поиска считается один раз на событие; ввод в поиск применяется с задержкой
     const objDesc = r => { if (r.type !== '1' && r.type !== 1) return ''; const d = model.value && model.value.dev.get(r.obj); return d ? txt(d, 'Description') : ''; };
     const hay = r => r.hay ||= (r.name + ' ' + objDesc(r) + ' ' + r.text + ' ' + r.det + ' ' + evName(r.code) + ' ' + evDesc(r.desc) + ' ' + r.code + ' ' + r.desc + ' ' + r.user).toLowerCase();
     const qd = ref(sv ? sv.q : '');
@@ -32,7 +30,7 @@ const LogView = {
     });
     watchReset(q, code, lim);
     const date = t => t ? new Date(t).toLocaleString('ru') : '—';
-    const kindOf = r => ({ 1: 'dev', 2: 'zone', 6: 'delay' })[r.type] || '';   // JournalObjectType: 1 GKDevice, 2 GKZone, 6 GKDelay
+    const kindOf = r => ({ 1: 'dev', 2: 'zone', 6: 'delay' })[r.type] || '';
     const onPick = () => { const fs = [...picker.value.files]; picker.value.value = ''; readLogs(fs); };
     return { acc, evName, evSev, evDesc, logData, logBusy, logErr, q, code, lim, objSet, objTitle, picker, list, shown, codes, date, kindOf, objDesc, onPick, clearLog, openTree, all: () => { objSet.value = null; objTitle.value = ''; }, fmt };
   },
@@ -67,5 +65,4 @@ const LogView = {
 <p v-if="list.length > shown.length"><button @click="lim += 1000">Ещё 1000 (осталось {{ list.length - shown.length }})</button></p>
 </template>`,
 };
-// сброс страницы при смене фильтров
 function watchReset(q, code, lim) { Vue.watch([q, code], () => { lim.value = 500; }); }

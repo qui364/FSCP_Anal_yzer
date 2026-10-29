@@ -25,8 +25,7 @@ const App = {
     const tab = t => t === 'raw' ? openRaw() : t === 'settings' ? go({ type: 'settings' }) : t === 'log' ? openLog() : t === 'loginfo' ? openLogInfo() : t === 'logic' ? openLogic() : t === 'check' ? openCheck() : openTree(t);
     const counts = computed(() => { const m = model.value; return m ? { dev: m.dev.size - 1, zone: m.zones.length, delay: m.delays.length, plan: [...m.plan.values()].filter(p => !isPlanFolder(p)).length } : {}; });
     const welcome = computed(() => !booting.value && !loaded.value && !loading.value && !error.value && !logData.value && !['log', 'loginfo', 'settings'].includes(view.value.type));
-    // число найденных инцидентов для кнопки: считается в фоне, когда есть и конфигурация, и журнал
-    watch([logData, model], () => { chkCount.value = null; if (logData.value && model.value) setTimeout(() => chkGet().then(r => { if (r) chkCount.value = r.eps.filter(e => e.key).length; }).catch(() => {}), 50); }, { immediate: true });
+    watch([logData, model], () => { chkCount.value = null; if (logData.value && model.value) idle(() => chkGet().then(r => { if (r) chkCount.value = r.eps.filter(e => e.key).length; }).catch(() => {})); }, { immediate: true });
     const onEsc = e => { if (e.key === 'Escape' && dlg.value) closeDlg(false); };
     onMounted(() => window.addEventListener('keydown', onEsc));
     onBeforeUnmount(() => window.removeEventListener('keydown', onEsc));
@@ -48,8 +47,6 @@ const App = {
       clearLog();
       if (view.value.type === 'log' || view.value.type === 'loginfo' || view.value.type === 'check') loaded.value ? openTree('dev') : go({ type: 'empty' });
     };
-    // полноэкранный загрузчик: чтение архива, разбор XML, построение дерева, чтение журнала
-    // доля загрузки по подписи этапа; не убывает, пока загрузчик открыт; подпись без записи — доля остаётся прежней
     const PROG = { 'Восстанавливаю сохранённое…': 3, 'Читаю сохранённый журнал…': 8, 'Ищу сохранённый архив…': 12, 'Распаковываю архив…': 20, 'Готовлю дерево…': 30, 'Разбираю XML (может занять несколько секунд)…': 30, 'Разбираю файл устройств…': 35, 'Разбираю планы…': 55, 'Собираю дерево устройств…': 65, 'Собираю зоны и сценарии…': 75, 'Связываю устройства со сценариями…': 85, 'Раскладываю объекты по планам…': 92, 'Открываю вкладку…': 98 };
     const pct = ref(0);
     const loaderText = computed(() => stage.value || loading.value || (building.value ? 'Готовлю дерево…' : '') || logBusy.value || booting.value);
@@ -120,7 +117,6 @@ createApp(App)
   .component('SourceView', SourceView).component('XmlView', XmlView).component('TreeView', TreeView).component('LogView', LogView).component('CheckView', CheckView).component('SettingsView', SettingsView).component('LogicView', LogicView).component('WelcomeView', WelcomeView).component('PlanCanvas', PlanCanvas)
   .mount('#app');
 
-// Отладка: ?sample=<url> грузит архив по адресу
 const sample = new URLSearchParams(location.search).get('sample'), sampleLog = new URLSearchParams(location.search).get('log');
 if (sampleLog) fetch(sampleLog).then(r => r.blob()).then(b => readLogs([new File([b], decodeURIComponent(sampleLog.split('/').pop()))]));
 if (sample) fetch(sample).then(r => r.blob()).then(b => load(Object.assign(b, { name: decodeURIComponent(sample.split('/').pop()) }), false));
@@ -134,14 +130,13 @@ else idbDo('readonly', s => s.get('log')).then(recs => { if (recs) booting.value
   if (tab === 'raw') openRaw(); else if (tab === 'log') openLog(); else if (tab === 'loginfo') openLogInfo(); else if (tab === 'logic') await openLogic(); else if (tab === 'check' && logData.value) await openCheck(); else if (tab === 'settings') go({ type: 'settings' }); else await openTree(['zone', 'delay', 'plan'].includes(tab) ? tab : 'dev');
 }).catch(() => {}).then(() => { booting.value = ''; });
 
-// Mini App Telegram: официальный скрипт грузим только внутри Telegram (по хэшу запуска), в обычном браузере внешних зависимостей нет
 if (/tgWebApp/.test(location.hash)) {
   const sc = document.createElement('script');
   sc.src = 'https://telegram.org/js/telegram-web-app.js';
   sc.onload = () => {
     const w = window.Telegram && Telegram.WebApp;
     if (!w) return;
-    try { w.ready(); w.expand(); if (w.isVersionAtLeast('8.0')) w.requestFullscreen(); } catch { /* старый клиент — остаётся обычное окно */ }
+    try { w.ready(); w.expand(); if (w.isVersionAtLeast('8.0')) w.requestFullscreen(); } catch {  }
   };
   document.head.appendChild(sc);
 }

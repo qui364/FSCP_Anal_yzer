@@ -1,4 +1,3 @@
-// страница настроек
 const SettingsView = {
   setup() {
     const theme = ref(document.documentElement.dataset.theme || 'system');
@@ -19,7 +18,7 @@ const SettingsView = {
       const reload = () => { location.href = location.pathname; };
       try { const r = indexedDB.deleteDatabase('fscp-viewer'); r.onsuccess = r.onerror = r.onblocked = reload; setTimeout(reload, 700); } catch { reload(); }
     };
-    const chOpen = reactive(new Set([CHANGELOG[0].v]));   // раскрытые версии: по умолчанию последняя
+    const chOpen = reactive(new Set([CHANGELOG[0].v]));
     const chToggle = v => { chOpen.has(v) ? chOpen.delete(v) : chOpen.add(v); };
     return { ver: APP_VERSION, log: CHANGELOG, chOpen, chToggle, theme, set, icons, setIcons, exit, opts: [['system', 'Система'], ['light', 'Светлая'], ['dark', 'Тёмная']] };
   },

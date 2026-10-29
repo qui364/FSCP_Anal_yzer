@@ -1,4 +1,3 @@
-// модель строится при первом открытии любой вкладки; building — какая вкладка ждёт
 async function withModel(tag, v) {
   if (!model.value) {
     building.value = tag;
@@ -10,7 +9,6 @@ function openTree(kind, sel) { return withModel(kind, { type: 'tree', kind, sel 
 function openCheck() { return withModel('check', { type: 'check' }); }
 function openLogic() { return withModel('logic', { type: 'logic' }); }
 
-// сигнатура архива для привязки сохранённых правок планов (имя, размер, дата изменения)
 const planSig = (name, size, mtime) => name + '|' + size + '|' + (mtime || 0);
 
 let loadSeq = 0;
@@ -21,13 +19,13 @@ async function load(f, persist = true, open = true) {
   let z;
   try { z = await JSZip.loadAsync(f); }
   catch (e) { if (my === loadSeq) { error.value = 'Не удалось открыть архив: ' + e.message; loading.value = ''; } return; }
-  if (my !== loadSeq) return;   // за время чтения открыли другой архив
+  if (my !== loadSeq) return;
   clearPlanCache();
   S.treeStates.clear();
   S.zip = z;
   S.xmlTexts = {}; S.lineCache = {}; S.guidIdx = {}; S.modelP = null;
   model.value = null;
-  try {   // сохранённые правки планов (редактор на холсте плана) подменяют PlansConfiguration.xml того же архива
+  try {
     const r = await idbDo('readonly', s => s.get('plans'));
     if (my !== loadSeq) return;
     if (r && r.sig === planSig(f.name, f.size, f.lastModified)) S.xmlTexts['PlansConfiguration.xml'] = r.text;
@@ -39,10 +37,9 @@ async function load(f, persist = true, open = true) {
   loaded.value = true;
   loading.value = '';
   if (persist) saveFile(f);
-  if (open) await openTree('dev');   // дождаться, иначе поздний переход перетрёт восстановленную вкладку
+  if (open) await openTree('dev');
 }
 
-// Закрыть архив: сбросить кэши и забыть файл; журнал остаётся
 function closeArchive() {
   loadSeq++;
   clearPlanCache();

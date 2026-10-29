@@ -1,20 +1,18 @@
-// холст плана: подложка с зумом колесом (к курсору), панорамой перетаскиванием, двойной клик — вписать
-const bmpCache = new Map();   // декодированные подложки (ключ — файл в zip), не больше 6
-const planIconImgs = new Map();   // значки устройств (PLAN_ICONS): файл -> Image (готовый — когда complete)
+const bmpCache = new Map();
+const planIconImgs = new Map();
 let planIconOnLoad = () => {};
 const planIcon = f => {
   let im = planIconImgs.get(f);
   if (!im) { im = new Image(); im.onload = () => planIconOnLoad(); im.src = 'icons/plan/' + f; planIconImgs.set(f, im); }
   return im.complete && im.naturalWidth ? im : null;
 };
-const planTint = new Map();   // красные копии значков для сработавших элементов имитации
+const planTint = new Map();
 const planIconHot = f => {
   const im = planIcon(f); if (!im) return null;
   let t = planTint.get(f);
   if (!t) { t = document.createElement('canvas'); t.width = im.naturalWidth; t.height = im.naturalHeight; const x = t.getContext('2d'); x.drawImage(im, 0, 0); x.globalCompositeOperation = 'source-atop'; x.fillStyle = 'rgba(255,20,20,.9)'; x.fillRect(0, 0, t.width, t.height); planTint.set(f, t); }
   return t;
 };
-// цвета сетки из CSS-переменных: читаем при смене темы, а не на каждом кадре
 const darkMq = matchMedia('(prefers-color-scheme: dark)');
 let gridKey = '', gridCols = null;
 const gridColors = () => {
@@ -26,17 +24,15 @@ const gridColors = () => {
   }
   return gridCols;
 };
-// поля XML-элементов плана
 const chan = (e, tag) => { const c = child(e, tag); return c && [txt(c, 'R'), txt(c, 'G'), txt(c, 'B'), (+txt(c, 'A') || 0) / 255]; };
 const color = (e, tag) => { const c = chan(e, tag); return c ? `rgb(${c[0]},${c[1]},${c[2]})` : '#888'; };
 const colorA = (e, tag) => { const c = chan(e, tag); return c ? `rgba(${c[0]},${c[1]},${c[2]},${c[3]})` : 'transparent'; };
 const ptsOf = e => subs(e, 'Points', 'Point').map(q => [+txt(q, 'X'), +txt(q, 'Y')]);
 const rectOf = e => ({ x: +txt(e, 'Left'), y: +txt(e, 'Top'), w: +txt(e, 'Width'), h: +txt(e, 'Height') });
 const layerOf = e => ({ z: +txt(e, 'ZLayer') || 0, zi: +txt(e, 'ZIndex') || 0 });
-// порядок отрисовки: точки сверху, текст без фона под остальным, затем слой и индекс
 const planOrder = (a, b) => (a.t === 'p') - (b.t === 'p') || (a.t === 'x' && !a.hasBg) - (b.t === 'x' && !b.hasBg) || a.z - b.z || a.zi - b.zi;
 const scaleObjs = (list, k) => { for (const o of list) { if (o.pts) o.pts.forEach(q => { q[0] *= k; q[1] *= k; }); else { o.x *= k; o.y *= k; if (o.w) o.w *= k; if (o.h) o.h *= k; if (o.fs) o.fs *= k; } } };
-let planView = null;   // {scale, ox, oy} — общий вид холста для всех планов
+let planView = null;
 let planCacheGen = 0;
 function clearPlanCache() {
   planCacheGen++;
@@ -51,11 +47,11 @@ const PlanCanvas = {
     const flag = k => ref((() => { try { return localStorage[k] === '1'; } catch { return false; } })());
     const editOn = flag('fscp.planEdit'), simOn = flag('fscp.planSim');
     const fitOn = ref(false), addOpen = ref(false), cv = ref(null), note = ref(''), zoomPct = ref(0), tip = ref(null);
-    const manual = new Set(); let lit = new Set();   // имитация: нажатые вручную UID и все сработавшие (с цепочкой по логике)
+    const manual = new Set(); let lit = new Set();
     let zl = new Map();
     const relit = () => { ({ lit, zl } = simRun(manual)); };
-    let objs = [], iconHalf = 11, hover = null, selObjs = [], picked = '', grid = null;   // grid — пространственная сетка для hit(), строится при первом обращении после любого изменения objs
-    let segs = [];   // подложка на холсте: {bmp, ox, oy, w, h}
+    let objs = [], iconHalf = 11, hover = null, selObjs = [], picked = '', grid = null;
+    let segs = [];
     const centerOn = ref((() => { try { return localStorage['fscp.planCenter'] === '1'; } catch { return false; } })());
     let img = null, iw = 0, ih = 0, scale = planView?.scale ?? 1, ox = planView?.ox ?? 0, oy = planView?.oy ?? 0, fit = 1, raf = 0, ro = null, gen = 0, drag = null;
     const css = () => cv.value.getBoundingClientRect();
@@ -69,7 +65,7 @@ const PlanCanvas = {
       if (!img) return;
       g.setTransform(scale * dpr, 0, 0, scale * dpr, ox * dpr, oy * dpr);
       g.imageSmoothingQuality = 'high';
-      {   // сетка позади плана: шаг кратен степени двойки, каждая 5-я линия ярче, подписи координат по краям
+      {
         const { line, mut } = gridColors();
         let st = 50; while (st * scale < 28) st *= 2; while (st * scale > 70 && st > 1) st /= 2;
         const x0 = -ox / scale, y0 = -oy / scale, x1 = x0 + w / dpr / scale, y1 = y0 + h / dpr / scale, lw = 1 / (scale * dpr);
@@ -89,7 +85,7 @@ const PlanCanvas = {
       for (const s of segs) g.drawImage(s.bmp, s.ox, s.oy, s.w ?? s.bmp.width, s.h);
       g.globalAlpha = 1;
       for (const o of objs) {
-        const hv = o === hover, zh = !hv && o.kind === 'zone' && hover?.zs?.includes(o.uid);   // зона наведённого извещателя
+        const hv = o === hover, zh = !hv && o.kind === 'zone' && hover?.zs?.includes(o.uid);
         if (o.t === 'x') {
           g.fillStyle = o.bg; g.fillRect(o.x, o.y, o.w, o.h);
           if (o.bt > 0) { g.lineWidth = o.bt; g.strokeStyle = o.bc; g.strokeRect(o.x + o.bt / 2, o.y + o.bt / 2, o.w - o.bt, o.h - o.bt); }
@@ -109,7 +105,7 @@ const PlanCanvas = {
         g.fillStyle = on ? (o.kind === 'zone' ? ['', '#f59f00', '#e8590c', '#e03131'][zl.get(o.uid) || 3] : '#e03131') : o.fill; g.globalAlpha = on || hv || zh ? 0.6 : o.sub ? 0.5 : 0.3; g.fill(); g.globalAlpha = 1;
         g.lineWidth = (hv || zh ? 2.5 : 1.2) / scale; g.strokeStyle = hv || zh ? '#e8590c' : o.stroke; g.stroke();
       }
-      if (esel.value && canEdit.value) {   // редактирование: контур и ручки (вершины многоугольника, углы прямоугольника)
+      if (esel.value && canEdit.value) {
         const o = esel.value, hs = 4.5 / scale;
         g.lineWidth = 1.5 / scale; g.strokeStyle = '#1c7ed6'; g.fillStyle = '#fff'; g.setLineDash([5 / scale, 3 / scale]);
         g.beginPath();
@@ -117,13 +113,12 @@ const PlanCanvas = {
         g.stroke(); g.setLineDash([]);
         for (const q of o.t === 'g' ? o.pts : o.t === 'p' ? [] : [[o.x, o.y], [o.x + o.w, o.y], [o.x + o.w, o.y + o.h], [o.x, o.y + o.h]]) { g.beginPath(); g.rect(q[0] - hs, q[1] - hs, hs * 2, hs * 2); g.fill(); g.stroke(); }
       }
-      for (const o of selObjs) {   // выбранный в дереве элемент (все его значки/фигуры на плане): контур (белая подложка + пурпурная линия)
+      for (const o of selObjs) {
         const path = () => { g.beginPath(); if (o.t === 'p') g.arc(o.x, o.y, Math.max(6, 5 / scale) * 1.9, 0, 7); else if (o.t === 'r' || o.t === 'x') g.rect(o.x, o.y, o.w, o.h); else { o.pts.forEach((q, i) => i ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1])); g.closePath(); } };
         path(); g.lineWidth = 6 / scale; g.strokeStyle = '#fff'; g.stroke();
         path(); g.lineWidth = 3 / scale; g.strokeStyle = '#d6336c'; g.stroke();
       }
     };
-    // объект холста из элемента PointObject/RectangleObject/PolygonObject (el — исходный узел XML, правки пишутся в него)
     const mkObj = (e, t) => {
       const m = model.value, uid = txt(e, 'ItemUID'); let kind = '', label = '';
       if (m.dev.has(uid)) { kind = 'dev'; label = devLabel(m.dev.get(uid)); }
@@ -140,7 +135,6 @@ const PlanCanvas = {
     const collect = p => {
       const m = model.value, out = [];
       const add = (tag, item, t) => { for (const e of subs(p, tag, item)) out.push(mkObj(e, t)); };
-      // ссылки на планы (прямоугольник с подписью) и текстовые блоки; ItemUID у них нет
       for (const e of subs(p, 'ElementRectangleSubPlans', 'ElementRectangleSubPlan')) {
         out.push({ t: 'r', kind: 'plink', el: e, uid: txt(e, 'UID'), sub: true, label: 'Переход на план: ' + (txt(e, 'Caption') || txt(e, 'Name')), cap: txt(e, 'Caption'), ...layerOf(e), fill: color(e, 'BackgroundColor'), stroke: color(e, 'BorderColor'), ...rectOf(e) });
       }
@@ -151,8 +145,7 @@ const PlanCanvas = {
         out.push({ t: 'x', kind: 'ptext', el: e, uid: txt(e, 'UID'), label: 'Текст: ' + txt(e, 'Text'), text: txt(e, 'Text'), ...layerOf(e), fs: +txt(e, 'FontSize') || 12, bold: txt(e, 'FontBold') === 'true', ital: txt(e, 'FontItalic') === 'true', ff: txt(e, 'FontFamilyName') || 'Arial', ta: +txt(e, 'TextAlignment') || 0, va: +txt(e, 'VerticalAlignment') || 0, up: txt(e, 'UpperCase') === 'true', fill: color(e, 'ForegroundColor'), bg: colorA(e, 'BackgroundColor'), bc: colorA(e, 'BorderColor'), bt: +txt(e, 'BorderThickness') || 0, hasBg: (+txt(child(e, 'BackgroundColor'), 'A') || 0) > 0, ...rectOf(e) });
       }
       add('PolygonObjects', 'PolygonObject', 'g'); add('RectangleObjects', 'RectangleObject', 'r'); add('PointObjects', 'PointObject', 'p');
-      // размер значка: половина расстояния до ближайшего соседа (25-й перцентиль по плану), в пределах 2.5–11, чтобы в плотных группах не слипались
-      const ps = out.filter(o => o.t === 'p'), nn = [], NC = 24, cells = new Map();   // сетка ячеек NC: расстояния больше NC на результат (потолок 11) не влияют
+      const ps = out.filter(o => o.t === 'p'), nn = [], NC = 24, cells = new Map();
       for (const a of ps) { const k = Math.floor(a.x / NC) + ',' + Math.floor(a.y / NC); (cells.get(k) || cells.set(k, []).get(k)).push(a); }
       for (const a of ps) {
         let d = NC;
@@ -165,9 +158,9 @@ const PlanCanvas = {
       return out.sort(planOrder);
     };
     const inPoly = (pts, x, y) => { let r = false; for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) if ((pts[i][1] > y) !== (pts[j][1] > y) && x < (pts[j][0] - pts[i][0]) * (y - pts[i][1]) / (pts[j][1] - pts[i][1]) + pts[i][0]) r = !r; return r; };
-    const GC = 80;   // размер ячейки сетки (в координатах подложки)
+    const GC = 80;
     const buildGrid = () => {
-      const cells = new Map(), big = [];   // big — крупные фигуры, которые проще проверять всегда
+      const cells = new Map(), big = [];
       objs.forEach((o, i) => {
         o._i = i;
         let x0, y0, x1, y1;
@@ -185,8 +178,8 @@ const PlanCanvas = {
       grid ||= buildGrid();
       const cand = new Set(grid.big);
       for (let a = Math.floor((x - pr) / GC); a <= Math.floor((x + pr) / GC); a++) for (let b = Math.floor((y - pr) / GC); b <= Math.floor((y + pr) / GC); b++) for (const o of grid.cells.get(a + ',' + b) || []) cand.add(o);
-      for (const o of [...cand].sort((p, q) => q._i - p._i)) {   // сверху вниз по порядку отрисовки
-        if ((o.t === 'x' && !canEdit.value)) continue;   // текстовые блоки вне редактирования неинтерактивны: только рисуются поверх подложки
+      for (const o of [...cand].sort((p, q) => q._i - p._i)) {
+        if ((o.t === 'x' && !canEdit.value)) continue;
         if (o.t === 'p' ? Math.hypot(o.x - x, o.y - y) <= pr : (o.t === 'r' || o.t === 'x') ? x >= o.x && x <= o.x + o.w && y >= o.y && y <= o.y + o.h : inPoly(o.pts, x, y)) return o;
       }
       return null;
@@ -196,7 +189,6 @@ const PlanCanvas = {
       if (img) planView = { scale, ox, oy };
       raf ||= requestAnimationFrame(draw);
     };
-    // reset=false — только пересчитать «вписанный» масштаб, не трогая текущий зум и смещение
     const fitView = (reset = true) => {
       if (!img) return;
       const r = css(), pad = 16;
@@ -215,7 +207,6 @@ const PlanCanvas = {
     };
     const pos = e => { const r = css(); return [e.clientX - r.left, e.clientY - r.top]; };
     const onWheel = e => { const [x, y] = pos(e); zoomAt(x, y, Math.exp(-e.deltaY * (e.deltaMode ? 0.05 : 0.0015))); };
-    // щипок двумя пальцами: масштаб вокруг центра между ними и сдвиг
     const ptrs = new Map();
     let pinch = null;
     const pinchGeom = () => { const [a, b] = [...ptrs.values()], r = css(); return { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, x: (a.x + b.x) / 2 - r.left, y: (a.y + b.y) / 2 - r.top }; };
@@ -224,8 +215,8 @@ const PlanCanvas = {
       cv.value.focus(); cv.value.setPointerCapture(e.pointerId);
       ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (ptrs.size === 2) { drag = null; tip.value = null; pinch = { ...pinchGeom(), scale, ox, oy }; return; }
-      if (e.pointerType === 'touch') { const [x, y] = pos(e); hover = hit(x, y); }   // у касания нет предварительного pointermove
-      if (canEdit.value && e.button === 2) { delVertex(...pos(e)); return; }   // правая кнопка — удалить вершину
+      if (e.pointerType === 'touch') { const [x, y] = pos(e); hover = hit(x, y); }
+      if (canEdit.value && e.button === 2) { delVertex(...pos(e)); return; }
       if (canEdit.value && e.button === 0) { const d = editDown(...pos(e), e); if (d) { drag = d; return; } }
       drag = { x: e.clientX, y: e.clientY, ox, oy, moved: false };
     };
@@ -246,7 +237,6 @@ const PlanCanvas = {
       if (h !== hover) { hover = h; redraw(); cv.value.style.cursor = h?.kind ? 'pointer' : ''; }
       tip.value = h ? { x: x + 14, y: y + 14, text: tipText(h) } : null;
     };
-    // подпись, описание и (в имитации) состояние объекта
     const tipText = h => {
       let t = h.desc ? h.label + '\n' + h.desc : h.label;
       if (simOn.value && /^(dev|zone|delay)$/.test(h.kind)) {
@@ -276,7 +266,6 @@ const PlanCanvas = {
       }
       redraw();
     };
-    // --- редактирование плана: правки пишутся в XML-узлы (o.el), история отмены — замыкания, сохранение — IndexedDB ---
     const ready = ref(false), esel = shallowRef(null), hver = ref(0), msg = ref(''), addQuery = ref(''), addKind = ref('dev');
     const canEdit = computed(() => editOn.value && ready.value && !!props.plan);
     const hist = [], redoS = [];
@@ -306,7 +295,7 @@ const PlanCanvas = {
     let saveT = 0;
     const saveSoon = () => {
       clearTimeout(saveT);
-      saveT = setTimeout(() => {   // сериализация всего XML планов тяжёлая: пауза после серии правок и только в простое
+      saveT = setTimeout(() => {
         const run = () => {
           const text = '<?xml version="1.0" encoding="utf-8"?>\n' + new XMLSerializer().serializeToString(planRoot());
           S.xmlTexts['PlansConfiguration.xml'] = text; delete S.lineCache['PlansConfiguration.xml'];
@@ -333,7 +322,6 @@ const PlanCanvas = {
     const commitEdit = (o, before) => { const after = snap(o); writeDom(o); push({ undo: () => setState(o, before), redo: () => setState(o, after) }); };
     const toW = (px, py) => [(px - ox) / scale, (py - oy) / scale];
     const corners = o => [[o.x, o.y], [o.x + o.w, o.y], [o.x + o.w, o.y + o.h], [o.x, o.y + o.h]];
-    // ближайшая к точке (x, y) точка ребра многоугольника: { i — индекс ребра, p — точка } или null
     const edgeAt = (pts, x, y) => {
       const n = pts.length; let bi = -1, bd = 8 / scale, bp = null;
       for (let i = 0; i < n; i++) {
@@ -353,7 +341,6 @@ const PlanCanvas = {
       const i = o.pts.findIndex(q => Math.hypot(q[0] - x, q[1] - y) <= 8 / scale);
       if (i >= 0) { const b = snap(o); o.pts.splice(i, 1); commitEdit(o, b); }
     };
-    // прямоугольник -> многоугольник из четырёх углов: узел переименовывается (Rectangle -> Polygon), Left/Top/Width/Height заменяются на Points, узел переезжает в соседний контейнер
     const toPoly = o => {
       const old = o.el, doc = old.ownerDocument, ns = old.namespaceURI, oldWrap = old.parentNode, plan = oldWrap.parentNode, nx = old.nextSibling;
       const el = doc.createElementNS(ns, old.nodeName.replace('Rectangle', 'Polygon'));
@@ -379,13 +366,13 @@ const PlanCanvas = {
           if (e.altKey) { delVertex(px, py); return { edit: true, done: true }; }
           return { edit: true, k: 'v', o, i, sx: x, sy: y, before: snap(o), moved: false };
         }
-        const ed = edgeAt(o.pts, x, y);   // клик по ребру — новая вершина, её можно сразу тянуть
+        const ed = edgeAt(o.pts, x, y);
         if (ed) return newVertex(o, ed);
       }
       if (o?.el && (o.t === 'r' || o.t === 'x')) {
         const i = corners(o).findIndex(q => Math.hypot(q[0] - x, q[1] - y) <= hr);
         if (i >= 0) return { edit: true, k: 'c', o, i, sx: x, sy: y, before: snap(o), moved: false };
-        const ed = o.t === 'r' && edgeAt(corners(o), x, y);   // у прямоугольника клик по ребру превращает его в многоугольник
+        const ed = o.t === 'r' && edgeAt(corners(o), x, y);
         if (ed) { toPoly(o); hver.value++; return newVertex(o, ed); }
       }
       const h = hit(px, py);
@@ -409,11 +396,10 @@ const PlanCanvas = {
     };
     const editUp = (d, e) => {
       if (d.done) return;
-      if (d.orig) commitEdit(d.o, d.orig);   // добавленная вершина записывается и без сдвига
+      if (d.orig) commitEdit(d.o, d.orig);
       else if (d.moved) commitEdit(d.o, d.before);
       else if (d.k === 'm' && d.o.kind && e.type === 'pointerup') { picked = d.o.uid; emit('pick', d.o.uid); }
     };
-    // двойной клик — вписать вид
     const onDbl = () => fitView();
     const onKey = e => {
       if (!canEdit.value) return;
@@ -422,7 +408,6 @@ const PlanCanvas = {
       else if ((e.ctrlKey || e.metaKey) && e.code === 'KeyY') { e.preventDefault(); redo(); }
       else if (e.key === 'Escape') { esel.value = null; redraw(); }
     };
-    // свойства выбранного (X/Y/ширина/высота; у многоугольника — габариты)
     const pr = computed(() => { hver.value; const o = esel.value; if (!o) return null; const [x, y, w, h] = bbox(o); return { label: o.label || '', t: o.t, x: +x.toFixed(1), y: +y.toFixed(1), w: +w.toFixed(1), h: +h.toFixed(1) }; });
     const setProp = (k, v) => {
       const o = esel.value, n = parseFloat(v); if (!o || !isFinite(n)) return;
@@ -431,7 +416,6 @@ const PlanCanvas = {
       else { o.x = nb.x; o.y = nb.y; if (o.t !== 'p') { o.w = Math.max(nb.w, 1); o.h = Math.max(nb.h, 1); } }
       commitEdit(o, b);
     };
-    // добавление на план: клон существующего узла того же вида (цвета, слой, ModuleData), новые UID/ItemUID, центр видимой области
     const KINDS = { dev: ['Устройство', 'PointObject', 'GKDevice'], zone: ['Зона', 'RectangleObject', 'GKZone'], delay: ['Сценарий', 'RectangleObject', 'GKDelay'] };
     const onPlan = () => { hver.value; return new Set(objs.filter(o => o.kind && o.el).map(o => o.uid)); };
     const addList = computed(() => {
@@ -485,7 +469,6 @@ const PlanCanvas = {
     const toggleCenter = () => { centerOn.value = !centerOn.value; try { localStorage['fscp.planCenter'] = centerOn.value ? '1' : '0'; } catch {} syncSel(true); };
     const zoomBtn = k => { const r = css(); zoomAt(r.width / 2, r.height / 2, k); };
 
-    // подложка плана: из архива (с кэшем декодированных) или, если подложки нет, холст размера плана с цветом фона
     const bmpOf = async (p, my, cacheGen) => {
       const bg = txt(p, 'BackgroundImageSource');
       if (!bg) {
@@ -523,11 +506,11 @@ const PlanCanvas = {
         } catch { if (my === gen) note.value = 'Не удалось прочитать подложку как изображение.'; return; }
         note.value = '';
         const list = collect(p);
-        const pw = +txt(p, 'Width'), ph = +txt(p, 'Height'), fx = pw > 0 ? bmp.width / pw : 1, fy = ph > 0 ? bmp.height / ph : 1;   // координаты объектов — в размере плана, подложка может быть крупнее
+        const pw = +txt(p, 'Width'), ph = +txt(p, 'Height'), fx = pw > 0 ? bmp.width / pw : 1, fy = ph > 0 ? bmp.height / ph : 1;
         if (Math.abs(fx - 1) > 0.02 && Math.abs(fx / fy - 1) < 0.02) scaleObjs(list, fx);
-        const keepFit = fitOn.value;   // syncSel при центрировании сбрасывает режим
+        const keepFit = fitOn.value;
         segs = [{ bmp, ox: 0, oy: 0, w: bmp.width, h: bmp.height }]; img = bmp; iw = bmp.width; ih = bmp.height; objs = list; grid = null; syncSel(true);
-        fitView(keepFit || !planView);   // зум и смещение общие для всех планов: вписываем только при первом показе
+        fitView(keepFit || !planView);
         ready.value = true;
       } catch (e) { console.error(e); if (my === gen) note.value = 'Не удалось построить план: ' + e.message; }
     };

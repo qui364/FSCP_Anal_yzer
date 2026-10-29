@@ -1,4 +1,3 @@
-﻿// страница «Журнал событий»: сводка по загруженному журналу (сама таблица — LogView, дочерний пункт «События»)
 const LogInfoView = {
   setup() {
     const ls = computed(() => {
@@ -87,7 +86,6 @@ const RawView = {
 </div>`,
 };
 
-// не-XML файл из архива: картинка, видео, текст или hex-дамп + откуда на него ссылаются
 const FileView = {
   props: { name: String },
   setup(props) {
@@ -134,7 +132,6 @@ const FileView = {
 </template>`,
 };
 
-// режим «Исходник»: сырой текст с номерами строк, рисуются только видимые строки
 const SourceView = {
   props: { name: String, line: Number },
   setup(props) {
@@ -170,7 +167,6 @@ const SourceView = {
 </div>`,
 };
 
-// сырой XML-файл как дерево тегов
 const XmlView = {
   props: { name: String, uid: String },
   setup(props) {
@@ -181,7 +177,7 @@ const XmlView = {
     onMounted(async () => {
       let text;
       try { text = await getText(props.name); } catch (e) { err.value = e.message; return; }
-      await new Promise(r => setTimeout(r, 30));      // дать отрисоваться заголовку перед тяжёлым разбором
+      await new Promise(r => setTimeout(r, 30));
       doc = new DOMParser().parseFromString(text, 'application/xml');
       const pe = doc.querySelector('parsererror');
       if (pe) { err.value = pe.textContent.slice(0, 500); return; }
@@ -211,7 +207,6 @@ const XmlView = {
       st.select(pk, null);
       scrollToPk(pk);
     };
-    // Поиск: находит первые совпадения и раскрывает путь до них
     const doSearch = () => {
       const q = query.value.toLowerCase();
       if (!q) return;

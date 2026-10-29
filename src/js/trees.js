@@ -6,7 +6,6 @@ const devLabel = d => {
 const zoneLabel = z => `[${txt(z, 'No')}] ${txt(z, 'Name')}`;
 const delayLabel = d => `[${txt(d, 'No')}] ${txt(d, 'Name')}`;
 
-// Значки-заглушки для драйверов без записи в PLAN_ICONS: DriverUID -> ключ TREE_ICONS (только дерево)
 const TREE_DRV_ICONS = {
   'c1c19c8d-6462-4d5c-a9ec-56e2222ac245': 'drv-zp.png',
   '4d5647df-a278-48f6-9f89-19e4d51b7711': 'drv-als.png',
@@ -25,7 +24,6 @@ const isPlanFolder = p => subs(p, 'Children', 'Plan').length > 0;
 const planItem = p => isPlanFolder(p)
   ? { k: 'folder', key: txt(p, 'UID'), label: txt(p, 'Name'), sub: '', count: subs(p, 'Children', 'Plan').filter(c => !isPlanFolder(c)).length, kids: () => subs(p, 'Children', 'Plan').map(planItem), detail: () => folderDetail(p) }
   : { k: 'plan', key: txt(p, 'UID'), label: txt(p, 'Name'), sub: '', kids: () => [...planElemItems(p), ...planObjItems(p)], detail: () => planDetail(p) };
-// переходы на планы и текстовые блоки плана (в просмотрщике — только отрисовка)
 function planElemItems(p) {
   const f = (e, extra) => ['Left', 'Top', 'Width', 'Height'].map(k => txt(e, k)).every(Boolean) ? [['Положение', `${Math.round(+txt(e, 'Left'))}, ${Math.round(+txt(e, 'Top'))}; ${Math.round(+txt(e, 'Width'))} × ${Math.round(+txt(e, 'Height'))}`], ...extra] : extra;
   const links = subs(p, 'ElementRectangleSubPlans', 'ElementRectangleSubPlan').concat(subs(p, 'ElementPolygonSubPlans', 'ElementPolygonSubPlan')).map(e => {
@@ -38,7 +36,6 @@ function planElemItems(p) {
   });
   return [...links, ...texts];
 }
-// зоны плана (с их устройствами, стоящими на этом же плане) и устройства вне этих зон
 function planObjItems(p) {
   const o = model.value.planObjs.get(txt(p, 'UID'));
   if (!o) return [];
@@ -58,9 +55,7 @@ const TREES = {
   plan:  m => ({ title: 'Планы', plans: true, roots: m.planRoots.map(planItem), note: `${[...m.plan.values()].filter(p => !isPlanFolder(p)).length} планов` }),
 };
 
-// Панель деталей: строки [подпись, значение]. Значение — строка/число, {warn}, либо массив {label, goto|src+line|open, note} / {more}
 const link = (label, a) => ({ label, ...a });
-// SEP — разделитель блоков в таблице деталей; лишние (в начале, в конце, подряд) отбрасываются
 const SEP = ['', { sep: 1 }];
 const kv = rows => rows.filter(r => r === SEP || (r[1] !== '' && r[1] != null && !(Array.isArray(r[1]) && !r[1].length)))
   .filter((r, i, a) => r !== SEP || (i > 0 && i < a.length - 1 && a[i - 1] !== SEP));
@@ -70,7 +65,6 @@ function srcRef(file, uid) {
   const ln = lineOf(lineIndex(file, t), i);
   return [link(`${file}:${ln}`, { xml: file, uid })];
 }
-// смещение первого <UID>…</UID> каждого объекта; один проход по файлу вместо indexOf на каждый клик
 function uidIndex(file, t) {
   const key = file + '#uid';
   if (S.guidIdx[key]) return S.guidIdx[key];
@@ -80,16 +74,12 @@ function uidIndex(file, t) {
 }
 const more = (arr, n = 100) => !arr.length ? '' : arr.length > n ? [...arr.slice(0, n), { more: arr.length - n }] : arr;
 
-// цепочка устройств от верхнего (без корня RootDevice) до d
 function devChain(d) {
   const chain = [];
   for (let n = d; n && n !== model.value.root; n = n.parentElement?.parentElement) chain.unshift(n);
   return chain;
 }
-// Групповой драйвер (hasChildrens: МВК4, РМ2…) собственного адреса не имеет: его дети адресуются в обход него,
-// а сам он подписывается диапазоном адресов детей, например 1.8.3.1-4
 const isGroup = d => !!DRIVERS[txt(d, 'DriverUID')]?.[4];
-// драйверы с noAddress (ГК, линии, группы индикаторов/реле…) в адресации не участвуют
 const noAddr = d => isGroup(d) || !!DRIVERS[txt(d, 'DriverUID')]?.[3];
 const addrCache = new WeakMap();
 function devAddr(d) {
@@ -106,7 +96,6 @@ function devAddrCalc(d) {
   }
   return parts.join('.');
 }
-// планы, на которых стоят элементы объекта (PlanElementUIDs); число элементов — в примечании
 function onPlans(x) {
   const m = model.value, by = new Map(), els = guids(x, 'PlanElementUIDs');
   for (const e of els) { const p = m.planOf.get(e); const k = p ? txt(p, 'UID') : ''; by.set(k, (by.get(k) || 0) + 1); }
@@ -143,7 +132,6 @@ function zoneDetail(z) {
 }
 const ST = { On: 'Включено', Off: 'Выключено', Fire1: 'Пожар 1', Fire2: 'Пожар 2', Attention: 'Внимание', Failure: 'Неисправность' };
 const CLOP = { AnyDevice: 'Любое из устройств', AnyZone: 'Любая из зон', AnyDelay: 'Любой из сценариев', AllDelays: 'Все сценарии' };
-// группа условий -> { join, kids: [clause | group] }; clause: { op, state, items: [{label, goto}] }
 function logicGroup(g) {
   const m = model.value, one = (kind, map, lab) => u => { const x = map.get(u); return { label: x ? lab(x) : u, goto: kind + ':' + u }; };
   const kids = [];
@@ -175,13 +163,12 @@ function planDetail(p) {
     ['Исходное имя', txt(p, 'BackgroundSourceName')], ['Источник', srcRef('PlansConfiguration.xml', uid)]]);
 }
 
-// обход в ширину по ленивым детям; возвращает цепочки узлов от корня до совпадения
 function findPaths(roots, pred, limit) {
   const hits = [], queue = roots.map(r => [r]);
   for (let qi = 0; qi < queue.length && hits.length < limit; qi++) {
     const path = queue[qi], it = path[path.length - 1];
     if (pred(it)) hits.push(path);
-    if (path.some((p, i) => i < path.length - 1 && p.key === it.key)) continue;   // цикл по предкам
+    if (path.some((p, i) => i < path.length - 1 && p.key === it.key)) continue;
     for (const k of (it._k ||= it.kids())) queue.push([...path, k]);
   }
   return hits;

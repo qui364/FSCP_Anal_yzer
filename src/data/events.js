@@ -1,5 +1,3 @@
-// Справочники журнала ГК из Rubezh.GKModule.Common.dll (examples/dll): EVENTS — enum GKJournalEvent (поле Name в CSV, 2002xxxx),
-// EVENT_DESCS — enum GKJournalDescription (поле Description: причина/подробность события). Строка — Description атрибута члена enum.
 const EVENTS = {
   20020007: "Зависание процесса опроса",
   20020010: "Ошибка инициализации мониторинга",

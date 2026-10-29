@@ -1,5 +1,4 @@
-// --- запоминание открытого файла между перезагрузками (IndexedDB) ---
-let dbP = null;   // одно общее соединение; при deleteDatabase закрывается само
+let dbP = null;
 const idb = () => dbP ||= new Promise((res, rej) => {
   const r = indexedDB.open('fscp-viewer', 1);
   r.onupgradeneeded = () => r.result.createObjectStore('kv');

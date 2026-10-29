@@ -1,6 +1,4 @@
-// Сопоставление по Name, как в GKDevice.InitializeDefaultProperties; No не уникален.
 const deviceParamCache = new WeakMap();
-// Подписи параметров из Rubezh.GKModule.Common.dll: DriverUID -> Name -> подпись.
 function paramText(uid, name, v) {
   const t = PARAM_ENUMS[uid]?.[name]?.[v === '' ? NaN : Number(v)];
   return t ?? (v === '' ? 'пусто' : v);
@@ -29,7 +27,6 @@ function deviceParameters(d) {
   const rows = [], seen = new Set();
   for (const source of ['Properties', 'DeviceProperties']) for (const p of subs(d, source, 'GKProperty')) {
     const name = txt(p, 'Name'), raw = txt(p, 'Value'), str = child(p, 'StringValue')?.textContent;
-    // Одинаковые копии в двух контейнерах показываем один раз; расхождения сохраняем.
     const key = JSON.stringify([name, raw, str ?? '']);
     if (source === 'DeviceProperties' && seen.has(key)) continue;
     seen.add(key);
@@ -39,13 +36,11 @@ function deviceParameters(d) {
     const defaults = matches.map(x => stringProperty ? x.StringDefault ?? '' : String(x.Default));
     const known = defaults.length > 0 && defaults.every(x => x === defaults[0]) &&
       (stringProperty || (raw !== '' && Number.isFinite(Number(raw)) && defaults[0] !== 'undefined'));
-    // Пустые сообщения (норма/сработка) отличием не считаем.
     const emptyMessage = value === '' && /^Сообщение для (нормы|сработки [12])$/.test(name);
     const equal = known && (emptyMessage || (stringProperty ? value === defaults[0] : Number(value) === Number(defaults[0])));
     rows.push({ name: name || 'Без имени', label: PARAM_LABELS[uid]?.[name] || name || 'Без имени', value, valueText: paramText(uid, name, value), baselineText: known ? paramText(uid, name, defaults[0]) : '', baseline: known ? defaults[0] : null,
       status: known ? equal ? 'same' : 'diff' : 'unknown', source });
   }
-  // Одно имя в обоих контейнерах с разными значениями — помечаем источник.
   const names = new Map();
   for (const r of rows) names.set(r.name, (names.get(r.name) || 0) + 1);
   for (const r of rows) if (names.get(r.name) > 1) r.label += r.source === 'Properties' ? ' (конфигурация)' : ' (устройство)';

@@ -1,5 +1,3 @@
-// граф «устройства зон → зоны → сценарии → исполнители» по условиям сценариев (для имитации на плане)
-// узлы: i:<uid> (устройство в зоне / в условии), z:<uid>, d:<uid>, o:<uid> (устройство в DirectionDevices); связи идут слева направо
 function buildGraph() {
   const m = model.value;
   if (m.graph) return m.graph;
@@ -22,7 +20,7 @@ function buildGraph() {
   const zoneDone = new Set();
   const zone = u => {
     const z = m.zone.get(u), zi = add('z', u, () => zoneLabel(z), +txt(z, 'No') || 0);
-    nodes[zi].f1 = +txt(z, 'Fire1Count') || 1;   // сколько датчиков зоны нужно для «Пожар 1» / «Пожар 2»
+    nodes[zi].f1 = +txt(z, 'Fire1Count') || 1;
     nodes[zi].f2 = +txt(z, 'Fire2Count') || 2;
     if (!zoneDone.has(u)) {
       zoneDone.add(u);
@@ -43,11 +41,10 @@ function buildGraph() {
       if (m.dev.has(u)) link(di, add('o', u, dlab(u)), '');
     }
   }
-  // слои: 0 — устройства зон, 1 — зоны, 2+глубина — сценарии (цепочки «сценарий → сценарий»), последний — исполнители
   const dep = new Map();
   const depth = i => {
     if (dep.has(i)) return dep.get(i);
-    dep.set(i, 0);   // защита от циклов
+    dep.set(i, 0);
     let b = 0;
     for (const p of nodes[i].in) if (nodes[p].kind === 'd') b = Math.max(b, depth(p) + 1);
     dep.set(i, b);
@@ -59,7 +56,6 @@ function buildGraph() {
   nodes.forEach(n => { if (n.kind === 'z') n.layer = 1; else if (n.kind === 'o') n.layer = L - 1; });
   const byLayer = Array.from({ length: L }, () => []);
   nodes.forEach((n, i) => byLayer[n.layer].push(i));
-  // порядок внутри слоя — по среднему положению связанных узлов предыдущих слоёв (меньше пересечений)
   const place = (l, key) => {
     const a = byLayer[l], ks = new Map(a.map(i => [i, key(i)]));
     a.sort((p, q) => ks.get(p) - ks.get(q) || nodes[p].no - nodes[q].no || nodes[p].label.localeCompare(nodes[q].label, 'ru'));
@@ -69,7 +65,6 @@ function buildGraph() {
   place(1, i => nodes[i].no);
   place(0, i => avg(i, 'out'));
   for (let l = 2; l < L; l++) place(l, i => avg(i, 'in'));
-  // сетка в плоскости YZ каждого слоя, слои расставлены по X
   const GAP = 45, P = new Float32Array(nodes.length * 3);
   byLayer.forEach((a, l) => {
     const n = a.length;
@@ -84,9 +79,7 @@ function buildGraph() {
   return m.graph = { nodes, idx, emap, edges: [...emap.values()], P, P0: P.slice(), L };
 }
 
-// схема строится автоматически: узлы графа схлопываются в группы по шаблону имени (числа → №; устройства — по типу драйвера), слои — как выше
 
-// модель имитации: сценарии с условиями (GKClause, И/ИЛИ) и зоны с порогами Fire1Count/Fire2Count; кэш model.sim
 function buildSim() {
   const m = model.value;
   if (m.sim) return m.sim;
@@ -102,22 +95,21 @@ function buildSim() {
   }
   return (m.sim = { zones, delays });
 }
-// manual — UID, нажатые вручную; результат: lit — сработавшие UID, zl — уровень зоны (1 Внимание, 2 Пожар 1, 3 Пожар 2)
 function simRun(manual) {
   const S = buildSim(), lit = new Set(manual), zl = new Map(), done = new Set();
   const zlev = u => {
     const z = S.zones.get(u);
     if (manual.has(u)) return 3;
     if (!z) return 0;
-    if (z.hand.some(d => manual.has(d))) return 3;   // ручной извещатель (ИПР*) сразу даёт «Пожар 2»
-    const n = z.devs.reduce((a, d) => a + (manual.has(d) ? 1 : 0), 0);   // считаются только нажатые датчики, не включённые исполнители
+    if (z.hand.some(d => manual.has(d))) return 3;
+    const n = z.devs.reduce((a, d) => a + (manual.has(d) ? 1 : 0), 0);
     return n >= z.f2 ? 3 : n >= z.f1 ? 2 : n ? 1 : 0;
   };
   const need = { Attention: 1, Fire1: 2, Fire2: 3 };
   const ok = c => {
     const t = [];
-    if (c.st === 'Failure' || c.st === 'Off') return false;   // неисправности и «Выключено» не имитируются
-    for (const u of c.devs) t.push(c.st === 'On' ? lit.has(u) : manual.has(u));   // Пожар/Внимание — только нажатое устройство, «Включено» — ещё и включённое сценарием
+    if (c.st === 'Failure' || c.st === 'Off') return false;
+    for (const u of c.devs) t.push(c.st === 'On' ? lit.has(u) : manual.has(u));
     for (const u of c.delays) t.push(lit.has(u));
     for (const u of c.zones) t.push(zlev(u) >= (need[c.st] || 1));
     if (!t.length) return false;
@@ -127,7 +119,7 @@ function simRun(manual) {
     ch = false;
     for (const d of S.delays) {
       if (done.has(d.uid)) continue;
-      const r = lit.has(d.uid) || (d.clauses.length && (d.and ? d.clauses.every(ok) : d.clauses.some(ok)));   // нажатый вручную сценарий тоже включает исполнителей
+      const r = lit.has(d.uid) || (d.clauses.length && (d.and ? d.clauses.every(ok) : d.clauses.some(ok)));
       if (r) { done.add(d.uid); lit.add(d.uid); for (const o of d.out) lit.add(o); ch = true; }
     }
   }
