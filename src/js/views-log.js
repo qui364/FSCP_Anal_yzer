@@ -1,8 +1,10 @@
 // журнал событий: фильтры по тексту, коду события и объекту (список ObjectUID из панели деталей)
+let logSaved = null;   // фильтры, «Ещё N» и прокрутка между заходами (пока тот же журнал); переход по ссылке с объектом открывает свежий вид
 const LogView = {
   props: { uids: Array, title: String },
   setup(props) {
-    const q = ref(''), code = ref(''), lim = ref(500), objSet = ref(props.uids ? new Set(props.uids) : null), objTitle = ref(props.title || '');
+    const sv = !props.uids && logSaved && logSaved.L === logData.value ? logSaved : null;
+    const q = ref(sv ? sv.q : ''), code = ref(sv ? sv.code : ''), lim = ref(sv ? sv.lim : 500), objSet = ref(props.uids ? new Set(props.uids) : sv ? sv.objSet : null), objTitle = ref(props.title || (sv ? sv.objTitle : ''));
     const picker = ref(null);
     const base = computed(() => {
       const L = logData.value;
@@ -11,11 +13,13 @@ const LogView = {
       return objSet.value.size === 1 ? (L.byObj.get([...objSet.value][0]) || []) : L.rows.filter(r => objSet.value.has(r.obj));
     });
     // строка для поиска считается один раз на событие; ввод в поиск применяется с задержкой
-    const hay = r => r.hay ||= (r.name + ' ' + r.text + ' ' + r.det + ' ' + evName(r.code) + ' ' + evDesc(r.desc) + ' ' + r.code + ' ' + r.desc + ' ' + r.user).toLowerCase();
-    const qd = ref('');
+    const objDesc = r => { if (r.type !== '1' && r.type !== 1) return ''; const d = model.value && model.value.dev.get(r.obj); return d ? txt(d, 'Description') : ''; };
+    const hay = r => r.hay ||= (r.name + ' ' + objDesc(r) + ' ' + r.text + ' ' + r.det + ' ' + evName(r.code) + ' ' + evDesc(r.desc) + ' ' + r.code + ' ' + r.desc + ' ' + r.user).toLowerCase();
+    const qd = ref(sv ? sv.q : '');
     let qt = 0;
     Vue.watch(q, v => { clearTimeout(qt); qt = setTimeout(() => { qd.value = v; }, 200); });
-    onBeforeUnmount(() => clearTimeout(qt));
+    onMounted(() => { if (sv) nextTick(() => { const mn = document.getElementById('main'); if (mn) mn.scrollTop = sv.top; }); });
+    onBeforeUnmount(() => { clearTimeout(qt); logSaved = { L: logData.value, q: q.value, code: code.value, lim: lim.value, objSet: objSet.value, objTitle: objTitle.value, top: document.getElementById('main')?.scrollTop || 0 }; });
     const list = computed(() => {
       const s = qd.value.trim().toLowerCase(), c = code.value;
       return base.value.filter(r => (!c || r.code === c) && (!s || hay(r).includes(s)));
@@ -30,7 +34,7 @@ const LogView = {
     const date = t => t ? new Date(t).toLocaleString('ru') : '—';
     const kindOf = r => ({ 1: 'dev', 2: 'zone', 6: 'delay' })[r.type] || '';   // JournalObjectType: 1 GKDevice, 2 GKZone, 6 GKDelay
     const onPick = () => { const fs = [...picker.value.files]; picker.value.value = ''; readLogs(fs); };
-    return { acc, evName, evSev, evDesc, logData, logBusy, logErr, q, code, lim, objSet, objTitle, picker, list, shown, codes, date, kindOf, onPick, clearLog, openTree, all: () => { objSet.value = null; objTitle.value = ''; }, fmt };
+    return { acc, evName, evSev, evDesc, logData, logBusy, logErr, q, code, lim, objSet, objTitle, picker, list, shown, codes, date, kindOf, objDesc, onPick, clearLog, openTree, all: () => { objSet.value = null; objTitle.value = ''; }, fmt };
   },
   template: `
 <Teleport to="#tbhead"><h2>Журнал событий</h2><span v-if="logData" class="m">{{ logData.rows.length }} событий из {{ logData.files.length }} файл.</span></Teleport>
@@ -56,7 +60,7 @@ const LogView = {
   <tr v-for="r in shown" :key="r.uid" :class="evSev(r.code)">
     <td class="tm">{{ date(r.t) }}</td>
     <td class="ev"><i></i>{{ evName(r.code) || r.code }}<template v-if="evDesc(r.desc)"><span class="m">: {{ evDesc(r.desc) }}</span></template></td>
-    <td class="ob"><span v-if="kindOf(r)" :class="['chip', 'ref', 'c-' + kindOf(r)]" @click="openTree(kindOf(r), r.obj)">{{ r.name || r.obj }}</span><template v-else>{{ r.name || r.obj }}</template></td>
+    <td class="ob"><span v-if="kindOf(r)" :class="['chip', 'ref', 'c-' + kindOf(r)]" @click="openTree(kindOf(r), r.obj)">{{ r.name || r.obj }}</span><template v-else>{{ r.name || r.obj }}</template><span v-if="objDesc(r)" class="m"> · {{ objDesc(r) }}</span></td>
   </tr>
   </tbody>
 </table>

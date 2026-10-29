@@ -7,16 +7,17 @@ async function withModel(tag, v) {
   go(v);
 }
 function openTree(kind, sel) { return withModel(kind, { type: 'tree', kind, sel }); }
+function openCheck() { return withModel('check', { type: 'check' }); }
 function openLogic() { return withModel('logic', { type: 'logic' }); }
 
 // сигнатура архива для привязки сохранённых правок планов (имя, размер, дата изменения)
 const planSig = (name, size, mtime) => name + '|' + size + '|' + (mtime || 0);
 
 let loadSeq = 0;
-async function load(f, persist = true) {
+async function load(f, persist = true, open = true) {
   const my = ++loadSeq;
   error.value = '';
-  loading.value = 'Читаю архив…';
+  loading.value = 'Распаковываю архив…';
   let z;
   try { z = await JSZip.loadAsync(f); }
   catch (e) { if (my === loadSeq) { error.value = 'Не удалось открыть архив: ' + e.message; loading.value = ''; } return; }
@@ -37,8 +38,8 @@ async function load(f, persist = true) {
   archive.value = { name: f.name || 'архив', size: f.size, mtime: f.lastModified || 0 };
   loaded.value = true;
   loading.value = '';
-  openTree('dev');
   if (persist) saveFile(f);
+  if (open) await openTree('dev');   // дождаться, иначе поздний переход перетрёт восстановленную вкладку
 }
 
 // Закрыть архив: сбросить кэши и забыть файл; журнал остаётся

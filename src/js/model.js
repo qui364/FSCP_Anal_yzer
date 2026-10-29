@@ -13,6 +13,9 @@ function buildModel(silent) {
   const p = S.modelP = buildModelRun(silent).finally(() => { if (S.modelP === p) S.modelP = null; });
   return p;
 }
+// подпись шага в загрузчике; пауза в кадр, чтобы она успела отрисоваться до тяжёлой синхронной работы
+const step = t => { stage.value = t; return new Promise(r => requestAnimationFrame(() => setTimeout(r, 0))); };
+
 async function buildModelRun(silent) {
   if (silent !== true) loading.value = 'Разбираю XML (может занять несколько секунд)…';
   await new Promise(r => setTimeout(r, 30));
@@ -23,12 +26,16 @@ async function buildModelRun(silent) {
       if (d.querySelector('parsererror')) throw new Error(n + ': некорректный XML');
       return d.documentElement;
     };
-    const gk = await parse('GKDeviceConfiguration.xml'), pl = await parse('PlansConfiguration.xml');
+    await step('Разбираю файл устройств…');
+    const gk = await parse('GKDeviceConfiguration.xml');
+    await step('Разбираю планы…');
+    const pl = await parse('PlansConfiguration.xml');
     if (myZip !== S.zip) return null;   // архив сменили во время разбора
     if (!child(gk, 'RootDevice')) throw new Error('в GKDeviceConfiguration.xml нет RootDevice');
     const m = { dev: new Map(), zone: new Map(), delay: new Map(), plan: new Map(), devByZone: new Map(), delayRefs: new Map(), unknownDrivers: 0 };
     m.root = child(gk, 'RootDevice');
     m.dev.set(txt(m.root, 'UID'), m.root);
+    await step('Собираю дерево устройств…');
     const stack = subs(m.root, 'Children', 'GKDevice').reverse();   // только устройства дерева (GKDevice есть и в ParameterTemplates), в порядке документа
     for (let d; (d = stack.pop()); ) {
       stack.push(...subs(d, 'Children', 'GKDevice').reverse());
@@ -36,6 +43,7 @@ async function buildModelRun(silent) {
       for (const z of guids(d, 'ZoneUIDs')) (m.devByZone.get(z) || m.devByZone.set(z, []).get(z)).push(d);
       if (!DRIVERS[txt(d, 'DriverUID')]) m.unknownDrivers++;
     }
+    await step('Собираю зоны и сценарии…');
     m.zones = subs(gk, 'Zones', 'GKZone').sort(byNo);
     m.zones.forEach(z => m.zone.set(txt(z, 'UID'), z));
     m.delays = subs(gk, 'Delays', 'GKDelay').sort(byNo);
@@ -49,11 +57,13 @@ async function buildModelRun(silent) {
       const u = g.textContent.trim(), a = m.delaysByZone.get(u) || m.delaysByZone.set(u, []).get(u);
       if (!a.includes(d)) a.push(d);
     }
+    await step('Связываю устройства со сценариями…');
     m.delaysByDev = new Map();                        // UID устройства -> сценарии, где оно участвует
     for (const d of m.delays) for (const x of subs(d, 'DirectionDevices', 'DirectionDevice')) {
       const u = txt(x, 'DeviceUid'), a = m.delaysByDev.get(u) || m.delaysByDev.set(u, []).get(u);
       if (!a.includes(d)) a.push(d);
     }
+    await step('Раскладываю объекты по планам…');
     for (const p of pl.getElementsByTagName('Plan')) m.plan.set(txt(p, 'UID'), p);
     m.planRoots = subs(pl, 'Plans', 'Plan');
     m.planOf = new Map();   // UID элемента плана -> ближайший план
@@ -75,6 +85,6 @@ async function buildModelRun(silent) {
     error.value = 'Не удалось разобрать конфигурацию: ' + e.message;
     return null;
   } finally {
-    loading.value = '';
+    loading.value = ''; stage.value = '';
   }
 }

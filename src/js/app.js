@@ -9,6 +9,7 @@ const NAV_IC = {
   plan: 'M3 7l6 -3l6 3l6 -3v13l-6 3l-6 -3l-6 3v-13 M9 4v13 M15 7v13',
   raw: 'M7 8l-4 4l4 4 M17 8l4 4l-4 4 M14 4l-4 16',
   jr: 'M6 4h11a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-11a1 1 0 0 1 -1 -1v-14a1 1 0 0 1 1 -1 M9 4v16 M13 8h3 M13 12h3',
+  chk: 'M12 3.5l9.5 16.5h-19z M12 10v4.5 M12 17.2h.01',
   log: 'M13 5h8 M13 9h5 M13 15h8 M13 19h5 M3 4m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z M3 14m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z',
   set: 'M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0'
 };
@@ -19,11 +20,13 @@ const App = {
     const active = computed(() => {
       if (building.value) return building.value;
       const t = view.value.type;
-      return t === 'empty' ? '' : t === 'tree' ? view.value.kind : t === 'log' ? 'log' : t === 'loginfo' ? 'loginfo' : t === 'logic' ? 'logic' : t === 'settings' ? 'settings' : 'raw';
+      return t === 'empty' ? '' : t === 'tree' ? view.value.kind : t === 'log' ? 'log' : t === 'loginfo' ? 'loginfo' : t === 'logic' ? 'logic' : t === 'check' ? 'check' : t === 'settings' ? 'settings' : 'raw';
     });
-    const tab = t => t === 'raw' ? openRaw() : t === 'settings' ? go({ type: 'settings' }) : t === 'log' ? openLog() : t === 'loginfo' ? openLogInfo() : t === 'logic' ? openLogic() : openTree(t);
+    const tab = t => t === 'raw' ? openRaw() : t === 'settings' ? go({ type: 'settings' }) : t === 'log' ? openLog() : t === 'loginfo' ? openLogInfo() : t === 'logic' ? openLogic() : t === 'check' ? openCheck() : openTree(t);
     const counts = computed(() => { const m = model.value; return m ? { dev: m.dev.size - 1, zone: m.zones.length, delay: m.delays.length, plan: [...m.plan.values()].filter(p => !isPlanFolder(p)).length } : {}; });
-    const welcome = computed(() => !loaded.value && !loading.value && !error.value && !logData.value && !['log', 'loginfo', 'settings'].includes(view.value.type));
+    const welcome = computed(() => !booting.value && !loaded.value && !loading.value && !error.value && !logData.value && !['log', 'loginfo', 'settings'].includes(view.value.type));
+    // число найденных инцидентов для кнопки: считается в фоне, когда есть и конфигурация, и журнал
+    watch([logData, model], () => { chkCount.value = null; if (logData.value && model.value) setTimeout(() => chkGet().then(r => { if (r) chkCount.value = r.eps.filter(e => e.key).length; }).catch(() => {}), 50); }, { immediate: true });
     const onEsc = e => { if (e.key === 'Escape' && dlg.value) closeDlg(false); };
     onMounted(() => window.addEventListener('keydown', onEsc));
     onBeforeUnmount(() => window.removeEventListener('keydown', onEsc));
@@ -43,12 +46,16 @@ const App = {
     const closeLog = async () => {
       if (!(await ask({ title: 'Закрыть журнал?', text: 'События этого журнала исчезнут из просмотрщика:', items: (logData.value?.files || []).map(f => f.n ? `${f.name} — ${f.n.toLocaleString('ru')} событий` : f.name), note: 'Файлы на диске не изменятся — чтобы вернуть журнал, откройте CSV снова.', ok: 'Закрыть журнал', cancel: 'Отмена', danger: true }))) return;
       clearLog();
-      if (view.value.type === 'log' || view.value.type === 'loginfo') loaded.value ? openTree('dev') : go({ type: 'empty' });
+      if (view.value.type === 'log' || view.value.type === 'loginfo' || view.value.type === 'check') loaded.value ? openTree('dev') : go({ type: 'empty' });
     };
     // полноэкранный загрузчик: чтение архива, разбор XML, построение дерева, чтение журнала
-    const loaderText = computed(() => loading.value || (building.value ? 'Строю дерево…' : '') || logBusy.value);
+    // доля загрузки по подписи этапа; не убывает, пока загрузчик открыт; подпись без записи — доля остаётся прежней
+    const PROG = { 'Восстанавливаю сохранённое…': 3, 'Читаю сохранённый журнал…': 8, 'Ищу сохранённый архив…': 12, 'Распаковываю архив…': 20, 'Готовлю дерево…': 30, 'Разбираю XML (может занять несколько секунд)…': 30, 'Разбираю файл устройств…': 35, 'Разбираю планы…': 55, 'Собираю дерево устройств…': 65, 'Собираю зоны и сценарии…': 75, 'Связываю устройства со сценариями…': 85, 'Раскладываю объекты по планам…': 92, 'Открываю вкладку…': 98 };
+    const pct = ref(0);
+    const loaderText = computed(() => stage.value || loading.value || (building.value ? 'Готовлю дерево…' : '') || logBusy.value || booting.value);
     const sideClick = e => { if (isMobile.value && e.target.closest('button')) navOpen.value = false; };
-    return { APP_VERSION, loaderText, acc, sideClick, isMobile, navIc, counts, logBusy, dlg, closeDlg, sideW, detW, sideRz, detRz, sideDbl, detDbl, active, tab, TABS, view, loading, error, loaded, welcome, building, navOpen, toggleNav, detOpen, toggleDet, archive, logData, logName, logTip, fpick, lpick, onFile, onLog, closeFile, closeLog };
+    Vue.watch(loaderText, t => { pct.value = t ? Math.max(pct.value, PROG[t] || 0) : 0; }, { immediate: true });
+    return { chkCount, APP_VERSION, loaderText, pct, acc, sideClick, isMobile, navIc, counts, logBusy, dlg, closeDlg, sideW, detW, sideRz, detRz, sideDbl, detDbl, active, tab, TABS, view, loading, error, loaded, welcome, building, navOpen, toggleNav, detOpen, toggleDet, archive, logData, logName, logTip, fpick, lpick, onFile, onLog, closeFile, closeLog };
   },
   template: `
 <div id="topbar" v-if="!welcome">
@@ -72,11 +79,12 @@ const App = {
     <div class="gap"></div>
     <button class="buildbtn nm" :disabled="!!building" :class="{ sel: active === 'loginfo' }" :title="logData ? logTip : ''" @click="logData ? tab('loginfo') : lpick.click()"><span class="nmt"><span v-html="navIc('jr')"></span>{{ logData ? logName : 'Открыть журнал…' }}</span><span v-if="logData" class="nx" role="button" title="Закрыть журнал" @click.stop="closeLog"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M1.5 1.5l7 7M8.5 1.5l-7 7"/></svg></span></button>
     <button v-if="logData" class="buildbtn child" :disabled="!!building" :class="{ sel: active === 'log' }" @click="tab('log')"><span class="nmt"><span v-html="navIc('log')"></span>События</span></button>
+    <button v-if="logData && chkCount > 0" class="buildbtn child tint c-check" :disabled="!loaded || !!building" :class="{ sel: active === 'check' }" :title="loaded ? '' : 'Нужен открытый файл конфигурации'" @click="tab('check')"><span class="nmt"><span v-html="navIc('chk')"></span>Ложные пуски</span><span v-if="chkCount != null" class="cnt">{{ chkCount.toLocaleString('ru') }}</span></button>
   </div>
   <div id="sidebot">
     <button class="buildbtn" :class="{ sel: active === 'settings' }" @click="tab('settings')"><span class="nmt"><span v-html="navIc('set')"></span>Настройки</span></button>  </div>
 </div>
-<div id="loader" v-if="loaderText" role="status" aria-live="polite"><div class="ld"><i class="spin"></i><p>{{ loaderText }}</p></div></div>
+<div id="loader" v-if="loaderText" role="status" aria-live="polite"><div class="ld"><h1 class="ldname"><span class="fcirc ldlogo"><img src="icons/flame.png" alt=""></span><span>FSCP <span class="anal">Anal</span>yzer</span></h1><div class="pb" :class="{ ind: !pct }"><i :style="{ width: pct + '%' }"></i></div><p>{{ loaderText }}<template v-if="pct"> · {{ pct }}%</template></p></div></div>
 <div id="scrim" v-if="isMobile && navOpen && !welcome" @click="toggleNav"></div>
 <div v-if="dlg" class="modal" @click.self="closeDlg(false)">
   <div class="dlg" role="dialog" aria-modal="true">
@@ -98,6 +106,7 @@ const App = {
   <source-view v-else-if="view.type === 'source'" :key="view.id" :name="view.name" :line="view.line" />
   <tree-view v-else-if="view.type === 'tree'" :key="view.id" :kind="view.kind" :sel="view.sel" />
   <logic-view v-else-if="view.type === 'logic'" :key="view.id" />
+  <check-view v-else-if="view.type === 'check'" :key="view.id" />
   <log-view v-else-if="view.type === 'log'" :key="view.id" :uids="view.uids" :title="view.title" />
 </div>
 </div>`,
@@ -108,20 +117,22 @@ createApp(App)
   .component('DeviceParameters', DeviceParameters)
   .component('LogicNode', LogicNode).component('TreeNode', TreeNode).component('DetailTable', DetailTable).component('FileHead', FileHead)
   .component('LogInfoView', LogInfoView).component('RawView', RawView).component('FileView', FileView)
-  .component('SourceView', SourceView).component('XmlView', XmlView).component('TreeView', TreeView).component('LogView', LogView).component('SettingsView', SettingsView).component('LogicView', LogicView).component('WelcomeView', WelcomeView).component('PlanCanvas', PlanCanvas)
+  .component('SourceView', SourceView).component('XmlView', XmlView).component('TreeView', TreeView).component('LogView', LogView).component('CheckView', CheckView).component('SettingsView', SettingsView).component('LogicView', LogicView).component('WelcomeView', WelcomeView).component('PlanCanvas', PlanCanvas)
   .mount('#app');
 
 // Отладка: ?sample=<url> грузит архив по адресу
 const sample = new URLSearchParams(location.search).get('sample'), sampleLog = new URLSearchParams(location.search).get('log');
 if (sampleLog) fetch(sampleLog).then(r => r.blob()).then(b => readLogs([new File([b], decodeURIComponent(sampleLog.split('/').pop()))]));
 if (sample) fetch(sample).then(r => r.blob()).then(b => load(Object.assign(b, { name: decodeURIComponent(sample.split('/').pop()) }), false));
-else idbDo('readonly', s => s.get('log')).then(recs => recs && readLogs(recs.map(r => new File([r.blob], r.name)))).catch(() => {}).then(() => idbDo('readonly', s => s.get('file'))).then(async rec => {
+else idbDo('readonly', s => s.get('log')).then(recs => { if (recs) booting.value = 'Читаю сохранённый журнал…'; return recs; }).then(recs => recs && readLogs(recs.map(r => new File([r.blob], r.name)))).catch(() => {}).then(() => { booting.value = 'Ищу сохранённый архив…'; return idbDo('readonly', s => s.get('file')); }).then(async rec => {
   let tab = ''; try { tab = localStorage.fscpTab || ''; } catch {}
   if (!rec) { if (tab === 'settings') go({ type: 'settings' }); else if (tab === 'log' && logData.value) openLog(); else if (tab === 'loginfo' && logData.value) openLogInfo(); return; }
-  await load(new File([rec.blob], rec.name, { lastModified: rec.mtime || 0 }), false);
+  booting.value = 'Открываю архив…';
+  await load(new File([rec.blob], rec.name, { lastModified: rec.mtime || 0 }), false, false);
+  booting.value = 'Открываю вкладку…';
   if (!loaded.value) { forgetFile(); return; }
-  if (tab === 'raw') openRaw(); else if (tab === 'log') openLog(); else if (tab === 'loginfo') openLogInfo(); else if (tab === 'logic') openLogic(); else if (['dev', 'zone', 'delay', 'plan'].includes(tab)) openTree(tab); else if (tab === 'settings') go({ type: 'settings' });
-}).catch(() => {});
+  if (tab === 'raw') openRaw(); else if (tab === 'log') openLog(); else if (tab === 'loginfo') openLogInfo(); else if (tab === 'logic') await openLogic(); else if (tab === 'check' && logData.value) await openCheck(); else if (tab === 'settings') go({ type: 'settings' }); else await openTree(['zone', 'delay', 'plan'].includes(tab) ? tab : 'dev');
+}).catch(() => {}).then(() => { booting.value = ''; });
 
 // Mini App Telegram: официальный скрипт грузим только внутри Telegram (по хэшу запуска), в обычном браузере внешних зависимостей нет
 if (/tgWebApp/.test(location.hash)) {

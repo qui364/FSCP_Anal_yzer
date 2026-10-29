@@ -10,6 +10,8 @@ const view = shallowRef({ type: 'empty' });
 // --- журнал событий (CSV из ГК): {files: [{name, blob, n}], rows (новые сверху), byObj: Map<ObjectUID, строки>, codes: Map<код, число>} ---
 const logData = shallowRef(null);
 const logBusy = ref(''), logErr = ref('');
+const stage = ref('');   // подпись текущего шага сборки модели (поверх прочих подписей загрузчика)
+const booting = ref(new URLSearchParams(location.search).get('sample') ? '' : 'Восстанавливаю сохранённое…');   // подпись этапа восстановления после перезагрузки; пусто — не идёт
 // Модальное окно: ask({ title, text, items, note, ok, cancel, danger }) -> Promise<boolean>; рендерится один раз в App
 const dlg = shallowRef(null);
 const ask = o => new Promise(res => {
@@ -36,7 +38,7 @@ const toggleNav = () => { navOpen.value = !navOpen.value; if (!isMobile.value) t
 let navId = 0;
 const go = v => {
   view.value = { ...v, id: ++navId };
-  if (v.type === 'raw' || v.type === 'tree' || v.type === 'log' || v.type === 'loginfo' || v.type === 'logic' || v.type === 'settings') try { localStorage.fscpTab = v.type === 'tree' ? v.kind : v.type; } catch {}
+  if (v.type === 'raw' || v.type === 'tree' || v.type === 'log' || v.type === 'loginfo' || v.type === 'logic' || v.type === 'check' || v.type === 'settings') try { localStorage.fscpTab = v.type === 'tree' ? v.kind : v.type; } catch {}
 };
 const openLog = (uids, title) => go({ type: 'log', uids, title });
 const openLogInfo = () => go({ type: 'loginfo' });
