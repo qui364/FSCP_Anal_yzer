@@ -52,18 +52,8 @@ const PlanCanvas = {
     const editOn = flag('fscp.planEdit'), simOn = flag('fscp.planSim');
     const fitOn = ref(false), addOpen = ref(false), cv = ref(null), note = ref(''), zoomPct = ref(0), tip = ref(null);
     const manual = new Set(); let lit = new Set();   // имитация: нажатые вручную UID и все сработавшие (с цепочкой по логике)
-    const relit = () => {
-      lit = new Set(manual);
-      if (!manual.size) return;
-      const G = buildGraph(), byUid = new Map();   // у одного UID может быть несколько узлов графа (устройство в условии и в исполнителях)
-      G.nodes.forEach((n, i) => (byUid.get(n.uid) || byUid.set(n.uid, []).get(n.uid)).push(i));
-      const q = [];
-      for (const u of manual) q.push(...(byUid.get(u) || []));
-      for (let qi = 0; qi < q.length; qi++) for (const k of G.nodes[q[qi]].out) {
-        const u = G.nodes[k].uid;
-        if (!lit.has(u)) { lit.add(u); q.push(...byUid.get(u)); }
-      }
-    };
+    let zl = new Map();
+    const relit = () => { ({ lit, zl } = simRun(manual)); };
     let objs = [], iconHalf = 11, hover = null, selObjs = [], picked = '', grid = null;   // grid — пространственная сетка для hit(), строится при первом обращении после любого изменения objs
     let segs = [];   // подложка на холсте: {bmp, ox, oy, w, h}
     const centerOn = ref((() => { try { return localStorage['fscp.planCenter'] === '1'; } catch { return false; } })());
@@ -116,7 +106,7 @@ const PlanCanvas = {
         if (o.t === 'p') { g.arc(o.x, o.y, Math.max(6, 5 / scale) * (hv ? 1.5 : 1), 0, 7); g.fillStyle = on ? '#ff1414' : hv ? '#e8590c' : '#2a6fdb'; g.fill(); g.lineWidth = 1.5 / scale; g.strokeStyle = '#fff'; g.stroke(); g.globalAlpha = 1; continue; }
         if (o.t === 'r') g.rect(o.x, o.y, o.w, o.h);
         else { o.pts.forEach((q, i) => i ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1])); g.closePath(); }
-        g.fillStyle = on ? '#e03131' : o.fill; g.globalAlpha = on || hv || zh ? 0.6 : o.sub ? 0.5 : 0.3; g.fill(); g.globalAlpha = 1;
+        g.fillStyle = on ? (o.kind === 'zone' ? ['', '#f59f00', '#e8590c', '#e03131'][zl.get(o.uid) || 3] : '#e03131') : o.fill; g.globalAlpha = on || hv || zh ? 0.6 : o.sub ? 0.5 : 0.3; g.fill(); g.globalAlpha = 1;
         g.lineWidth = (hv || zh ? 2.5 : 1.2) / scale; g.strokeStyle = hv || zh ? '#e8590c' : o.stroke; g.stroke();
       }
       if (esel.value && canEdit.value) {   // редактирование: контур и ручки (вершины многоугольника, углы прямоугольника)

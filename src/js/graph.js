@@ -85,3 +85,50 @@ function buildGraph() {
 }
 
 // схема строится автоматически: узлы графа схлопываются в группы по шаблону имени (числа → №; устройства — по типу драйвера), слои — как выше
+
+// модель имитации: сценарии с условиями (GKClause, И/ИЛИ) и зоны с порогами Fire1Count/Fire2Count; кэш model.sim
+function buildSim() {
+  const m = model.value;
+  if (m.sim) return m.sim;
+  const zones = new Map(), delays = [];
+  for (const [u, z] of m.zone) zones.set(u, { devs: (m.devByZone.get(u) || []).map(d => txt(d, 'UID')), f1: +txt(z, 'Fire1Count') || 1, f2: +txt(z, 'Fire2Count') || 2 });
+  for (const d of m.delays) {
+    const grp = d.querySelector('Logic OnClausesGroup');
+    const clauses = [...d.querySelectorAll('Logic OnClausesGroup > Clauses > GKClause')].map(c => ({
+      st: txt(c, 'StateType'), all: /^All/.test(txt(c, 'ClauseOperationType')),
+      devs: guids(c, 'DeviceUIDs'), zones: guids(c, 'ZoneUIDs'), delays: guids(c, 'DelayUIDs'),
+    }));
+    delays.push({ uid: txt(d, 'UID'), and: grp ? txt(grp, 'ClauseJoinOperationType') === 'And' : false, clauses, out: subs(d, 'DirectionDevices', 'DirectionDevice').map(x => txt(x, 'DeviceUid')) });
+  }
+  return (m.sim = { zones, delays });
+}
+// manual — UID, нажатые вручную; результат: lit — сработавшие UID, zl — уровень зоны (1 Внимание, 2 Пожар 1, 3 Пожар 2)
+function simRun(manual) {
+  const S = buildSim(), lit = new Set(manual), zl = new Map();
+  const zlev = u => {
+    const z = S.zones.get(u);
+    if (manual.has(u)) return 3;
+    if (!z) return 0;
+    const n = z.devs.reduce((a, d) => a + (lit.has(d) ? 1 : 0), 0);
+    return n >= z.f2 ? 3 : n >= z.f1 ? 2 : n ? 1 : 0;
+  };
+  const need = { Attention: 1, Fire1: 2, Fire2: 3 };
+  const ok = c => {
+    const t = [];
+    for (const u of c.devs) t.push(lit.has(u));
+    for (const u of c.delays) t.push(lit.has(u));
+    for (const u of c.zones) t.push(zlev(u) >= (need[c.st] || 1));
+    if (!t.length) return false;
+    return c.all ? t.every(Boolean) : t.some(Boolean);
+  };
+  for (let ch = true; ch;) {
+    ch = false;
+    for (const d of S.delays) {
+      if (lit.has(d.uid) || !d.clauses.length) continue;
+      const r = d.and ? d.clauses.every(ok) : d.clauses.some(ok);
+      if (r) { lit.add(d.uid); for (const o of d.out) lit.add(o); ch = true; }
+    }
+  }
+  for (const u of S.zones.keys()) { const l = zlev(u); if (l) { zl.set(u, l); lit.add(u); } }
+  return { lit, zl };
+}

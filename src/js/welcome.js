@@ -12,11 +12,12 @@ const WelcomeView = {
     };
     const onPick = () => { take(picker.value.files); picker.value.value = ''; };
     const onDrop = ev => { over.value = false; take(ev.dataTransfer.files); };
-    return { over, picker, onPick, onDrop, acc };
+    return { ver: APP_VERSION, over, picker, onPick, onDrop, acc };
   },
   template: `
 <div id="welcome">
   <h1 id="appname">FSCP Analyzer</h1>
+  <div class="ver">версия {{ ver }}</div>
   <div id="drop" :class="{ over }" @click="picker.click()" @dragover.prevent="over = true" @dragleave="over = false" @drop.prevent="onDrop">
     Перетащите .fscp или .csv файл сюда<br>или нажмите для выбора<input ref="picker" type="file" :accept="acc('.fscp,.zip,.csv')" multiple hidden @change="onPick">
   </div>

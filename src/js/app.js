@@ -48,12 +48,12 @@ const App = {
     // полноэкранный загрузчик: чтение архива, разбор XML, построение дерева, чтение журнала
     const loaderText = computed(() => loading.value || (building.value ? 'Строю дерево…' : '') || logBusy.value);
     const sideClick = e => { if (isMobile.value && e.target.closest('button')) navOpen.value = false; };
-    return { loaderText, acc, sideClick, isMobile, navIc, counts, logBusy, dlg, closeDlg, sideW, detW, active, tab, TABS, view, loading, error, loaded, welcome, building, navOpen, toggleNav, detOpen, toggleDet, archive, logData, logName, logTip, fpick, lpick, onFile, onLog, closeFile, closeLog };
+    return { APP_VERSION, loaderText, acc, sideClick, isMobile, navIc, counts, logBusy, dlg, closeDlg, sideW, detW, active, tab, TABS, view, loading, error, loaded, welcome, building, navOpen, toggleNav, detOpen, toggleDet, archive, logData, logName, logTip, fpick, lpick, onFile, onLog, closeFile, closeLog };
   },
   template: `
 <div id="topbar" v-if="!welcome">
   <button class="iconbtn" :class="{ sel: navOpen }" title="Навигация" @click="toggleNav"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 4h14M2 9h14M2 14h14"/></svg></button>
-  <span id="apptitle">FSCP Analyzer</span>
+  <span id="apptitle">FSCP Analyzer <small class="ver">v{{ APP_VERSION }}</small></span>
   <span id="tbhead"></span>
   <span class="tbsp"></span>
   <button v-if="view.type === 'tree'" class="iconbtn tbright" :class="{ sel: detOpen }" title="Панель деталей" @click="toggleDet"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 4h14M2 9h14M2 14h14"/></svg></button>
