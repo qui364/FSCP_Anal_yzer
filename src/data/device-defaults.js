@@ -6465,7 +6465,7 @@ const DEVICE_DEFAULTS = {
         {
           "No": 0,
           "Name": "Порог по питанию, B",
-          "Default": 120,
+          "Default": 180,
           "Min": 100,
           "Max": 300,
           "Multiplier": 10.0,
