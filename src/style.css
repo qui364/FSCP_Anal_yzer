@@ -480,6 +480,10 @@ svg.ni { vertical-align:-3px; margin-right:8px; flex:none }
 .ec-h .ttl { font-size:15px; font-weight:600 }
 .ec-h .cnt { padding:1px 9px; border-radius:10px; font-weight:600; font-size:12.5px; color:#fff; background:var(--c) }
 .ec-h .when { margin-left:auto; color:var(--mut); font-size:12.5px; font-variant-numeric:tabular-nums; text-align:right }
+.ec-h { cursor:pointer; user-select:none }
+.ec-h .arr { color:var(--mut); width:12px }
+.ec-s { padding:10px 16px; display:flex; flex-direction:column; gap:4px; font-size:13px; cursor:pointer }
+.ec-s .lbl { color:var(--mut) }
 .ec-b { padding:14px 16px 10px }
 .ec-lbl { margin:0 0 6px; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.05em; color:var(--mut) }
 .ec-f { display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:10px 16px; border-top:1px solid var(--line) }
@@ -497,5 +501,7 @@ svg.ni { vertical-align:-3px; margin-right:8px; flex:none }
 .tl2-i .tm { position:absolute; right:calc(100% + 12px); top:5px; width:62px; text-align:right; color:var(--mut); font-size:12px; font-variant-numeric:tabular-nums }
 .tl2-i i { position:absolute; left:-6px; top:11px; width:10px; height:10px; border-radius:50%; box-shadow:0 0 0 3px var(--panel) }
 .tl2-i > div.m { color:var(--mut) }
-.tl2-i.gap { margin-top:22px }
+.tl2-i.gap { padding-top:26px }
+.tl2-i.gap .tm { top:27px }
+.tl2-i.gap i { top:33px }
 @media (max-width:800px) { .tl2 { padding-left:0 } .tl2-i .tm { position:static; width:auto; order:-1 } .ec-h .when { margin-left:0; text-align:left } }

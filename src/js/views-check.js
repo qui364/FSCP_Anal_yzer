@@ -19,6 +19,7 @@ const CheckView = {
     const date = t => new Date(t).toLocaleString('ru'), time = t => new Date(t).toLocaleTimeString('ru');
     const toggle = i => { const s = new Set(open.value); s.has(i) ? s.delete(i) : s.add(i); open.value = s; };
     const eps = computed(() => res.value ? res.value.eps.filter(e => e.key).reverse() : []);
+    const on = e => { const m = new Map(); for (const it of e.items) { const d = model.value && model.value.dev.get(it.u), dr = d && DRIVERS[txt(d, 'DriverUID')], n = dr ? dr[0] : 'устройство'; m.set(n, (m.get(n) || 0) + 1); } return [...m].sort((a, b) => b[1] - a[1]); };   // что включилось: типы устройств и число
     const kinds = e => 'Включено ' + e.n + ': ' + Object.entries(e.kinds).map(([k, v]) => `${CHK_CLS[k]} — ${v}`).join('; ');
     const objDesc = u => { const d = model.value && model.value.dev.get(u); return d ? txt(d, 'Description') : ''; };
     const lineFaults = e => { const re = new RegExp('(^|[^\\d.])' + e.loop.line.replace(/\./g, '\\.') + '\\.'); return e.pre.filter(x => x[1] === 'fault' && re.test(x[3])); };
@@ -37,8 +38,12 @@ const CheckView = {
     const timeline = e => {
       const out = [], dis = new Map();
       for (const x of e.sc) for (const u of x.up || []) if (u.mode === 'o') dis.set(u.u, u);
-      for (const u of dis.values()) out.push({ t: 0, col: '#e5484d', up: u });   // отключённый старший сценарий — выше всех
-      for (const x of e.sc.slice(0, 4)) out.push({ t: 0, col: '#e5484d', sc: x, res: true });
+      const shown = e.sc.slice(0, 4), su = new Set(shown.map(x => x.u));
+      const nodes = [...[...dis.values()].filter(u => !su.has(u.u)).map(u => ({ u: u.u, o: { t: 0, col: '#8a8f98', up: u } })), ...shown.map(x => ({ u: x.u, par: (x.up || []).find(a => dis.has(a.u) && !su.has(a.u) || su.has(a.u)), o: { t: 0, col: '#8a8f98', sc: x, res: true } }))];
+      const kids = new Map(), roots = [];
+      for (const n of nodes) { const pu = n.par && n.par.u; if (pu && nodes.some(m => m.u === pu)) (kids.get(pu) || kids.set(pu, []).get(pu)).push(n); else roots.push(n); }
+      const walk = (n, d) => { out.push({ ...n.o, d: Math.min(4, d) }); for (const c of kids.get(n.u) || []) walk(c, d + 1); };   // старший → подчинённые прямо под ним
+      roots.forEach(n => walk(n, 0));
       const lf = e.loop ? lineFaults(e) : [];
       if (e.loop && !lf.length) out.push({ t: 0, col: '#8a8f98', mut: true, text: 'Неисправностей линии ' + e.loop.line + ' за час до эпизода не было' });
       const ev = lf.map(p => ({ t: p[0], col: laneCol.fault, text: tlText(p), o: String(p[4]) === '1' ? { k: 'dev', u: p[5], n: objLabel('dev', p[5], p[3]), pre: 'Неисправность ·', post: '(' + (EVENTS[p[2]] || p[2]) + ')' } : null }));
@@ -62,7 +67,7 @@ const CheckView = {
       out.forEach((x, i) => { x.gap = i > 0 && grp(x) !== grp(out[i - 1]); });   // пустое место между блоками
       return out;
     };
-    return { als, objLabel, stOf, scState, scOn, timeline, lineFaults, laneCol, tlText, res, busy, open, lim, eps, logData, loaded, CHK_CLS, date, time, objDesc, toggle, kinds, openTree };
+    return { als, objLabel, stOf, scState, scOn, timeline, lineFaults, laneCol, tlText, res, busy, open, lim, eps, logData, loaded, CHK_CLS, date, time, objDesc, toggle, kinds, on, openTree };
   },
   template: `
 <Teleport to="#tbhead"><h2>Ложные пуски</h2><span class="m">включения шлейфов без команды в конфигурации</span></Teleport>
@@ -72,19 +77,23 @@ const CheckView = {
 <p v-if="!eps.length" class="m">Несанкционированных пусков шлейфа не найдено.</p>
 <div v-else class="ecards">
   <div v-for="e in eps" :key="e.t0" :class="['ecard', { warn: !e.loop && e.early }]">
-    <div class="ec-h">
+    <div class="ec-h" @click="toggle(e.t0)">
+      <span class="arr">{{ open.has(e.t0) ? '▾' : '▸' }}</span>
       <span class="cnt">{{ e.n }}</span>
-      <span class="ttl"><template v-if="e.loop">Несанкционированный пуск шлейфа</template><template v-else>{{ kinds(e) }}</template></span>
-      <template v-if="e.loop"><span v-if="als(e.loop.line)" class="chip ref c-dev" @click="openTree('dev', als(e.loop.line).u)">{{ als(e.loop.line).l }}</span><span v-else class="chip t" style="--ck:#e5484d">АЛС {{ e.loop.line }}</span></template>
+      <span class="ttl"><template v-if="e.loop">Ложный пуск АЛС</template><template v-else>{{ kinds(e) }}</template></span>
+      <template v-if="e.loop"><span v-if="als(e.loop.line)" class="chip ref c-dev" @click.stop="openTree('dev', als(e.loop.line).u)">{{ als(e.loop.line).l }}</span><span v-else class="chip t" style="--ck:#e5484d">АЛС {{ e.loop.line }}</span></template>
       <span v-if="e.early" class="m">начало журнала — состояние неизвестно</span>
       <span class="when">{{ date(e.t0) }}<template v-if="e.t1 - e.t0 > 1000"> – {{ time(e.t1) }}</template></span>
     </div>
-    <div class="ec-b">
+    <div v-if="!open.has(e.t0)" class="ec-s" @click="toggle(e.t0)">
+      <div><span class="lbl">Включилось:</span> <template v-for="g in on(e).slice(0, 8)" :key="g[0]"><span class="chip">{{ g[0] }}</span><span class="m"> × {{ g[1] }}&nbsp; </span></template><span v-if="on(e).length > 8" class="m">и ещё {{ on(e).length - 8 }} типов</span></div>
+    </div>
+    <div v-else class="ec-b">
       <div class="tl2">
-        <div v-for="(x, k) in timeline(e)" :key="k" :class="['tl2-i', { gap: x.gap }]">
+        <div v-for="(x, k) in timeline(e)" :key="k" :class="['tl2-i', { gap: x.gap }]" :style="x.d ? { paddingLeft: 20 + x.d * 22 + 'px' } : null">
           <span class="tm">{{ x.t ? time(x.t) : '' }}</span><i :style="{ background: x.col }"></i>
           <div v-if="x.up"><span class="chip ref c-delay" @click="openTree('delay', x.up.u)">{{ x.up.l }}</span> старший сценарий был в состоянии «Отключено» — нижестоящие не должны включаться</div>
-          <div v-else-if="x.sc"><span class="chip ref c-delay" @click="openTree('delay', x.sc.u)">{{ x.sc.l }}</span> {{ scState(x.sc) }}, {{ scOn(x.sc) }}
+          <div v-else-if="x.sc"><span v-if="x.d" class="m">↳ </span><span class="chip ref c-delay" @click="openTree('delay', x.sc.u)">{{ x.sc.l }}</span> {{ scState(x.sc) }}, {{ scOn(x.sc) }}
           </div>
           <div v-else-if="x.o">{{ x.o.pre }} <span :class="['chip', 'ref', 'c-' + x.o.k]" @click="openTree(x.o.k, x.o.u)">{{ x.o.n }}</span><template v-if="x.o.post"> {{ x.o.post }}</template></div>
           <div v-else :class="{ m: x.mut }">{{ x.text }}</div>
