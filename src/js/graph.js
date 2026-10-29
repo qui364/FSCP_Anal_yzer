@@ -91,7 +91,7 @@ function buildSim() {
   const m = model.value;
   if (m.sim) return m.sim;
   const zones = new Map(), delays = [];
-  for (const [u, z] of m.zone) zones.set(u, { devs: (m.devByZone.get(u) || []).map(d => txt(d, 'UID')), f1: +txt(z, 'Fire1Count') || 1, f2: +txt(z, 'Fire2Count') || 2 });
+  for (const [u, z] of m.zone) zones.set(u, { devs: (m.devByZone.get(u) || []).map(d => txt(d, 'UID')), hand: (m.devByZone.get(u) || []).filter(d => /^ИПР/.test(DRIVERS[txt(d, 'DriverUID')]?.[0] || '')).map(d => txt(d, 'UID')), f1: +txt(z, 'Fire1Count') || 1, f2: +txt(z, 'Fire2Count') || 2 });
   for (const d of m.delays) {
     const grp = d.querySelector('Logic OnClausesGroup');
     const clauses = [...d.querySelectorAll('Logic OnClausesGroup > Clauses > GKClause')].map(c => ({
@@ -109,6 +109,7 @@ function simRun(manual) {
     const z = S.zones.get(u);
     if (manual.has(u)) return 3;
     if (!z) return 0;
+    if (z.hand.some(d => manual.has(d))) return 3;   // ручной извещатель (ИПР*) сразу даёт «Пожар 2»
     const n = z.devs.reduce((a, d) => a + (manual.has(d) ? 1 : 0), 0);   // считаются только нажатые датчики, не включённые исполнители
     return n >= z.f2 ? 3 : n >= z.f1 ? 2 : n ? 1 : 0;
   };

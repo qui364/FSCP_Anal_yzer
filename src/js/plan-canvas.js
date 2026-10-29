@@ -244,7 +244,16 @@ const PlanCanvas = {
       }
       const [x, y] = pos(e), h = img ? hit(x, y) : null;
       if (h !== hover) { hover = h; redraw(); cv.value.style.cursor = h?.kind ? 'pointer' : ''; }
-      tip.value = h ? { x: x + 14, y: y + 14, text: h.desc ? h.label + '\n' + h.desc : h.label } : null;
+      tip.value = h ? { x: x + 14, y: y + 14, text: tipText(h) } : null;
+    };
+    // подпись, описание и (в имитации) состояние объекта
+    const tipText = h => {
+      let t = h.desc ? h.label + '\n' + h.desc : h.label;
+      if (simOn.value && /^(dev|zone|delay)$/.test(h.kind)) {
+        const L = ['Норма', 'Внимание', 'Пожар 1', 'Пожар 2'];
+        t += '\nСостояние: ' + (h.kind === 'zone' ? L[zl.get(h.uid) || 0] : lit.has(h.uid) ? (manual.has(h.uid) ? 'Сработал (нажат)' : 'Включён по логике') : 'Норма');
+      }
+      return t;
     };
     const onUp = e => {
       ptrs.delete(e.pointerId);
@@ -253,7 +262,7 @@ const PlanCanvas = {
       if (d?.edit) { editUp(d, e); return; }
       if (d && !d.moved && canEdit.value && esel.value) { esel.value = null; redraw(); }
       if (d && !d.moved && e.type === 'pointerup' && simOn.value && hover && /^(dev|zone|delay)$/.test(hover.kind)) {
-        manual.has(hover.uid) ? manual.delete(hover.uid) : manual.add(hover.uid); relit(); redraw(); return;
+        manual.has(hover.uid) ? manual.delete(hover.uid) : manual.add(hover.uid); relit(); redraw(); if (tip.value) tip.value = { ...tip.value, text: tipText(hover) }; return;
       }
       if (d && !d.moved && e.type === 'pointerup' && hover?.kind) { picked = hover.uid; emit('pick', hover.uid); }
     };
