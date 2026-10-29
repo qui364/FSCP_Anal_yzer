@@ -104,18 +104,19 @@ function buildSim() {
 }
 // manual — UID, нажатые вручную; результат: lit — сработавшие UID, zl — уровень зоны (1 Внимание, 2 Пожар 1, 3 Пожар 2)
 function simRun(manual) {
-  const S = buildSim(), lit = new Set(manual), zl = new Map();
+  const S = buildSim(), lit = new Set(manual), zl = new Map(), done = new Set();
   const zlev = u => {
     const z = S.zones.get(u);
     if (manual.has(u)) return 3;
     if (!z) return 0;
-    const n = z.devs.reduce((a, d) => a + (lit.has(d) ? 1 : 0), 0);
+    const n = z.devs.reduce((a, d) => a + (manual.has(d) ? 1 : 0), 0);   // считаются только нажатые датчики, не включённые исполнители
     return n >= z.f2 ? 3 : n >= z.f1 ? 2 : n ? 1 : 0;
   };
   const need = { Attention: 1, Fire1: 2, Fire2: 3 };
   const ok = c => {
     const t = [];
-    for (const u of c.devs) t.push(lit.has(u));
+    if (c.st === 'Failure' || c.st === 'Off') return false;   // неисправности и «Выключено» не имитируются
+    for (const u of c.devs) t.push(c.st === 'On' ? lit.has(u) : manual.has(u));   // Пожар/Внимание — только нажатое устройство, «Включено» — ещё и включённое сценарием
     for (const u of c.delays) t.push(lit.has(u));
     for (const u of c.zones) t.push(zlev(u) >= (need[c.st] || 1));
     if (!t.length) return false;
@@ -124,9 +125,9 @@ function simRun(manual) {
   for (let ch = true; ch;) {
     ch = false;
     for (const d of S.delays) {
-      if (lit.has(d.uid) || !d.clauses.length) continue;
-      const r = d.and ? d.clauses.every(ok) : d.clauses.some(ok);
-      if (r) { lit.add(d.uid); for (const o of d.out) lit.add(o); ch = true; }
+      if (done.has(d.uid)) continue;
+      const r = lit.has(d.uid) || (d.clauses.length && (d.and ? d.clauses.every(ok) : d.clauses.some(ok)));   // нажатый вручную сценарий тоже включает исполнителей
+      if (r) { done.add(d.uid); lit.add(d.uid); for (const o of d.out) lit.add(o); ch = true; }
     }
   }
   for (const u of S.zones.keys()) { const l = zlev(u); if (l) { zl.set(u, l); lit.add(u); } }
