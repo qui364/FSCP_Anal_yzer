@@ -16,10 +16,10 @@ const WelcomeView = {
   },
   template: `
 <div id="welcome">
-  <h1 id="appname">FSCP Analyzer</h1>
-  <div class="ver">версия {{ ver }}</div>
+  <h1 id="appname"><span id="applogo" class="fcirc"><img src="icons/flame.png" alt=""></span><span>FSCP <span class="anal">Anal</span>yzer</span></h1>
   <div id="drop" :class="{ over }" @click="picker.click()" @dragover.prevent="over = true" @dragleave="over = false" @drop.prevent="onDrop">
     Перетащите .fscp или .csv файл сюда<br>или нажмите для выбора<input ref="picker" type="file" :accept="acc('.fscp,.zip,.csv')" multiple hidden @change="onPick">
   </div>
+  <div class="ver">версия {{ ver }}</div>
 </div>`,
 };

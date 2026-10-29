@@ -48,12 +48,12 @@ const App = {
     // полноэкранный загрузчик: чтение архива, разбор XML, построение дерева, чтение журнала
     const loaderText = computed(() => loading.value || (building.value ? 'Строю дерево…' : '') || logBusy.value);
     const sideClick = e => { if (isMobile.value && e.target.closest('button')) navOpen.value = false; };
-    return { APP_VERSION, loaderText, acc, sideClick, isMobile, navIc, counts, logBusy, dlg, closeDlg, sideW, detW, active, tab, TABS, view, loading, error, loaded, welcome, building, navOpen, toggleNav, detOpen, toggleDet, archive, logData, logName, logTip, fpick, lpick, onFile, onLog, closeFile, closeLog };
+    return { APP_VERSION, loaderText, acc, sideClick, isMobile, navIc, counts, logBusy, dlg, closeDlg, sideW, detW, sideRz, detRz, sideDbl, detDbl, active, tab, TABS, view, loading, error, loaded, welcome, building, navOpen, toggleNav, detOpen, toggleDet, archive, logData, logName, logTip, fpick, lpick, onFile, onLog, closeFile, closeLog };
   },
   template: `
 <div id="topbar" v-if="!welcome">
   <button class="iconbtn" :class="{ sel: navOpen }" title="Навигация" @click="toggleNav"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 4h14M2 9h14M2 14h14"/></svg></button>
-  <span id="apptitle">FSCP Analyzer <small class="ver">v{{ APP_VERSION }}</small></span>
+  <span id="apptitle"><span class="fcirc appic"><img src="icons/flame.png" alt=""></span><span>FSCP <span class="anal">Anal</span>yzer <small class="ver">v{{ APP_VERSION }}</small></span></span>
   <span id="tbhead"></span>
   <span class="tbsp"></span>
   <button v-if="view.type === 'tree'" class="iconbtn tbright" :class="{ sel: detOpen }" title="Панель деталей" @click="toggleDet"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 4h14M2 9h14M2 14h14"/></svg></button>
@@ -61,6 +61,8 @@ const App = {
   <input ref="lpick" type="file" :accept="acc('.csv')" multiple hidden @change="onLog">
 </div>
 <div id="shell" :style="{ '--sw': sideW + 'px', '--dw0': detW + 'px', '--dw': (view.type !== 'tree' || !detOpen ? 0 : detW) + 'px' }">
+<div v-if="!welcome && navOpen && !isMobile" class="prz" style="left:var(--sw)" title="Потяните, чтобы изменить ширину меню" @pointerdown.prevent="sideRz" @dblclick="sideDbl"></div>
+<div v-if="!welcome && view.type === 'tree' && detOpen && !isMobile" class="prz" style="right:var(--dw)" title="Потяните, чтобы изменить ширину деталей" @pointerdown.prevent="detRz" @dblclick="detDbl"></div>
 <welcome-view v-if="welcome" />
 <div id="side" v-else :class="{ closed: !navOpen }" :inert="!navOpen" @click="sideClick">
   <div id="trees">

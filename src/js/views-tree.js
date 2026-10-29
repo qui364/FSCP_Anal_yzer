@@ -151,7 +151,7 @@ const TreeView = {
       el.addEventListener('pointermove', mv); el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
     };
     const collapseAll = () => { st.open.clear(); st.select('', null); };
-    return { collapseAll, startRz, onPick, planUid, detOpen, detW, planW, def, query, found, doFind, mode, roots, toggleMode, toggleDiff, diff, diffCount, onEnter, applyFilter, selItem, rows, detailBlocks, logic, partOf, goLogic, crumbs, goCrumb, onKey, noAnc: new Set() };
+    return { collapseAll, startRz, planDbl, onPick, planUid, detOpen, detW, planW, def, query, found, doFind, mode, roots, toggleMode, toggleDiff, diff, diffCount, onEnter, applyFilter, selItem, rows, detailBlocks, logic, partOf, goLogic, crumbs, goCrumb, onKey, noAnc: new Set() };
   },
   template: `
 <Teleport to="#tbhead"><h2>{{ def.title }}</h2><span class="m">{{ def.note }}<template v-if="def.warn"> · <span class="warn">{{ def.warn }}</span></template></span><button v-if="kind === 'dev'" type="button" class="dsw" :class="{ on: diff }" :aria-pressed="diff" title="Плоский список устройств, параметры которых отличаются от параметров по умолчанию" @click="toggleDiff">Только с отличиями<template v-if="diffCount !== null"> <b>{{ diffCount }}</b></template></button></Teleport>
@@ -159,7 +159,8 @@ const TreeView = {
 <div class="crumbs tc m" v-hscroll><template v-if="crumbs.length"><template v-for="(c, i) in crumbs" :key="i"><span :class="[i < crumbs.length - 1 ? 'ref chip chev' : 'chip chev', 'c-' + c.k]" @click="i < crumbs.length - 1 && goCrumb(i)">{{ c.label }}</span></template></template><template v-else>Выберите узел — здесь появится путь</template></div></div>
 <div class="split">
   <div id="tview" class="xml" tabindex="0" @keydown="onKey" :style="def.plans ? { width: planW + 'px' } : null"><tree-node v-for="r in roots" :key="r.key" :item="r" parent-pk="" :anc="noAnc" /></div>
-  <div v-if="def.plans" id="tprev"><div class="rz" title="Потяните, чтобы изменить ширину дерева" @pointerdown.prevent="startRz"></div><plan-canvas :plan="planUid" :sel="selItem && selItem.k !== 'plan' ? selItem.key : ''" @pick="onPick" /></div>
+  <div v-if="def.plans" class="rzh"><div class="prz" title="Потяните, чтобы изменить ширину дерева" @pointerdown.prevent="startRz" @dblclick="planDbl"></div></div>
+  <div v-if="def.plans" id="tprev"><plan-canvas :plan="planUid" :sel="selItem && selItem.k !== 'plan' ? selItem.key : ''" @pick="onPick" /></div>
   <div id="tdet" :class="{ closed: !detOpen }" :inert="!detOpen">
     <p v-if="!selItem" class="m">Выберите узел.</p>
     <template v-else><div class="dhead"><span :class="['chip', 'c-' + selItem.k]">{{ selItem.label }}</span></div><template v-if="detailBlocks.length"><details v-for="block in detailBlocks" :key="block.title" class="detail-block" :open="block.title !== 'Драйвер'"><summary><h3>{{ block.title }}</h3></summary><detail-table :rows="block.rows" /></details></template><detail-table v-else :rows="rows" /><device-parameters v-if="selItem.paramInfo" :data="selItem.paramInfo" /><template v-if="partOf"><h3 class="lgt">В сценариях</h3><logic-node :key="selItem.key" :n="partOf" @pick="goLogic" /></template><template v-if="logic"><h3 class="lgt">Логика</h3><logic-node :n="logic" :top="true" @pick="goLogic" /></template></template>

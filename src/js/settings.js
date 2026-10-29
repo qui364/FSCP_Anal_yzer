@@ -19,7 +19,9 @@ const SettingsView = {
       const reload = () => { location.href = location.pathname; };
       try { const r = indexedDB.deleteDatabase('fscp-viewer'); r.onsuccess = r.onerror = r.onblocked = reload; setTimeout(reload, 700); } catch { reload(); }
     };
-    return { ver: APP_VERSION, theme, set, icons, setIcons, exit, opts: [['system', 'Система'], ['light', 'Светлая'], ['dark', 'Тёмная']] };
+    const chOpen = reactive(new Set([CHANGELOG[0].v]));   // раскрытые версии: по умолчанию последняя
+    const chToggle = v => { chOpen.has(v) ? chOpen.delete(v) : chOpen.add(v); };
+    return { ver: APP_VERSION, log: CHANGELOG, chOpen, chToggle, theme, set, icons, setIcons, exit, opts: [['system', 'Система'], ['light', 'Светлая'], ['dark', 'Тёмная']] };
   },
   template: `<div class="set">
 <Teleport to="#tbhead"><h2>Настройки</h2></Teleport>
@@ -30,6 +32,8 @@ const SettingsView = {
 </div>
 <h3>О программе</h3>
 <div class="card"><div class="srow"><div><b>Версия</b><small>Номер сборки</small></div><span>{{ ver }}</span></div></div>
+<h3>История изменений</h3>
+<div class="card chlog"><div v-for="r in log" :key="r.v" class="chrow" :class="{ open: chOpen.has(r.v) }"><div class="chh" role="button" tabindex="0" :aria-expanded="chOpen.has(r.v)" @click="chToggle(r.v)" @keydown.enter.space.prevent="chToggle(r.v)"><b>{{ r.v }}</b><small>{{ r.d }}</small></div><div class="chbody"><div><ul><li v-for="t in r.items" :key="t">{{ t }}</li></ul></div></div></div></div>
 <h3>Данные</h3>
 <div class="card">
   <div class="srow"><div><b>Очистить сохранённое</b><small>Удалит открытый архив, журнал событий и настройки из браузера. Файлы на диске не затрагиваются</small></div><button class="danger" @click="exit">Удалить данные</button></div>

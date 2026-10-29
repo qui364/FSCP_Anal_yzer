@@ -33,13 +33,34 @@ body { margin:0; font:14px/1.45 system-ui,sans-serif; background:var(--bg); colo
 #topbar { height:var(--tb); flex:none; display:flex; align-items:center; gap:8px; padding:0 12px; border-bottom:1px solid var(--line); background:var(--panel) }
 #apptitle { font-weight:600; letter-spacing:.3px }
 #apptitle { margin-right:4px; font-size:14px; line-height:20px }
+#apptitle { display:flex; align-items:center }
+#apptitle .appic { width:26px; height:26px; margin:0 8px 0 0 }
+#apptitle .appic:hover img { animation:flame 1.2s ease-in-out infinite }
+#apptitle .anal { color:#e5484d }
 .tbsp { flex:1 }
 
 .iconbtn { width:var(--ctl,32px); padding:0; display:inline-flex; align-items:center; justify-content:center; font-size:18px; flex:none }
-#welcome { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center }
-#appname { margin:0 0 20px; font-size:32px; font-weight:600; letter-spacing:.5px; color:var(--fg) }
-#drop { border:2px dashed var(--line); border-radius:8px; padding:28px 48px; text-align:center; color:var(--mut); cursor:pointer }
-#drop.over { border-color:var(--acc); color:var(--acc) }
+#welcome { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-start }
+/* значок: круг с градиентом, пламя внутри анимируется отдельно */
+.fcirc { display:inline-flex; align-items:center; justify-content:center; flex:none; border-radius:50%; background:#e5484d }
+.fcirc img { width:56%; height:66%; object-fit:contain; margin-top:5%; transform-origin:50% 95% }
+#applogo { width:1.2em; height:1.2em; margin-right:.35em }
+#applogo img { animation:flame 1.6s ease-in-out infinite }
+@keyframes flame {
+  0%, 100% { transform:scale(1,1) skewX(0) rotate(0) }
+  20% { transform:scale(.97,1.05) skewX(-2deg) rotate(-1.5deg) }
+  45% { transform:scale(1.03,.97) skewX(2deg) rotate(1deg) }
+  70% { transform:scale(.98,1.06) skewX(-1.5deg) rotate(1.5deg) }
+}
+@media (prefers-reduced-motion: reduce) { #applogo img, #apptitle .appic:hover img { animation:none } }
+#welcome { position:relative }
+#welcome .ver { position:absolute; bottom:12px; left:0; right:0; text-align:center }
+#appname .anal { color:#e5484d }
+#appname { display:flex; align-items:center; justify-content:center; margin:32px 0 0; font-size:32px; font-weight:600; letter-spacing:.5px; color:var(--fg) }
+#drop { margin:auto; width:min(640px, 100% - 32px); box-sizing:border-box; font-size:18px; line-height:1.6; border:2px dashed var(--line); border-radius:14px; padding:72px 48px; text-align:center; color:var(--mut); cursor:pointer; transition:border-color .15s, color .15s, background .15s, transform .15s }
+#drop:hover, #drop.over { border-color:var(--acc); color:var(--acc); background:color-mix(in srgb, var(--acc) 8%, transparent) }
+#drop:hover { transform:translateY(-1px) }
+#drop.over { transform:scale(1.02) }
 #side { width:var(--sw,340px); border-right:1px solid var(--line); background:var(--panel); overflow:auto; padding:12px; flex:none; display:flex; flex-direction:column; transition:width .22s ease, padding .22s ease, border-width .22s ease }
 #side { overflow-x:hidden; padding-top:6px }
 #side > * { min-width:calc(var(--sw,340px) - 41px) }
@@ -81,8 +102,12 @@ span.sep { margin:0 6px; color:var(--mut); font-size:20px; line-height:1; vertic
 #main:has(#tprev) > .split { gap:0 }
 #main:has(#tprev) #tview { flex:none }
 #tprev { flex:1; min-width:0; overflow:hidden; position:relative; font-size:13px; padding:12px; border-left:1px solid var(--line); background:var(--bg) }
-#tprev .rz { position:absolute; left:-4px; top:0; bottom:0; width:9px; z-index:6; cursor:col-resize; touch-action:none }
-#tprev .rz:hover, #tprev .rz:active { background:var(--acc); opacity:.5 }
+.prz { position:fixed; top:var(--tb,44px); bottom:0; width:9px; margin:0 -5px; z-index:20; cursor:col-resize; touch-action:none }
+.rzh { position:relative; flex:none; width:0; z-index:6 }   /* разделитель дерева планов: тот же .prz, но в потоке, чтобы не обрезался overflow у #tprev */
+.rzh .prz { position:absolute; top:0; bottom:0; margin:0 0 0 -5px }
+.prz:hover, .prz:active { background:var(--acc); opacity:.5 }
+.rzing { cursor:col-resize; user-select:none }
+.rzing #side, .rzing #tdet { transition:none }
 #tprev canvas { position:absolute; inset:0; width:100%; height:100%; touch-action:none; cursor:grab; --line:var(--mut) }
 #tprev .zbar { position:absolute; right:12px; bottom:12px; display:flex; align-items:center; gap:6px; background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:4px 6px }
 #tprev .zbar .m { min-width:44px; text-align:center }
@@ -380,8 +405,9 @@ svg.ni { vertical-align:-3px; margin-right:8px; flex:none }
   #tbhead .dsw b { margin-left:6px; padding-left:6px }
   #main { padding:12px }
   #welcome { padding:0 16px }
-  #appname { font-size:26px; text-align:center }
-  #drop { padding:24px 16px; width:100% }
+  #appname { font-size:26px }
+  #drop { padding:48px 16px; width:100%; font-size:16px }
+  #tview { touch-action:manipulation }   /* двойной тап по узлу — не зум страницы */
 
   #scrim { position:fixed; left:0; right:0; bottom:0; top:var(--tb); z-index:55; background:rgba(8,10,16,.45); animation:fade .15s }
   #side { position:fixed; left:0; top:var(--tb); bottom:0; width:min(86vw, 340px) !important; z-index:60; box-shadow:0 0 30px rgba(0,0,0,.35); transition:transform .22s ease }
@@ -400,7 +426,7 @@ svg.ni { vertical-align:-3px; margin-right:8px; flex:none }
   .split { flex-direction:column; gap:8px }
   #main:has(#tprev) #tview { width:auto !important; flex:0 0 38% }
   #tprev { flex:1 1 0; min-height:0; border-left:0; border-top:1px solid var(--line); padding:0 }
-  #tprev .rz { display:none }
+  .rzh { display:none }
   #tprev > p { padding:12px }
   #tprev .ebar { left:6px; right:6px; top:6px }
   #tprev .zbar { right:8px; bottom:8px }
@@ -416,3 +442,19 @@ svg.ni { vertical-align:-3px; margin-right:8px; flex:none }
   .dlg { padding:16px 18px }
 }
 .ver { font-size: 11px; font-weight: 400; opacity: .6; }
+
+.chlog { padding:4px 16px }
+.chrow { padding:10px 0; border-bottom:1px solid var(--line) }
+.chrow:last-child { border-bottom:0 }
+.chh { display:flex; align-items:baseline; gap:8px; cursor:pointer; outline:none }
+.chh:focus-visible { box-shadow:0 0 0 2px var(--acc); border-radius:6px }
+.chh::before { content:''; flex:none; align-self:center; width:20px; height:20px; border-radius:6px; background:var(--mut); transition:transform .18s, background .15s; -webkit-mask:var(--chev) center/14px no-repeat; mask:var(--chev) center/14px no-repeat; --chev:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 3.5 10.5 8 6 12.5'/%3E%3C/svg%3E") }
+.chh:hover::before { background:var(--acc) }
+.chrow.open > .chh::before { transform:rotate(90deg); background:var(--acc) }
+.chh small { color:var(--mut) }
+.chbody { display:grid; grid-template-rows:0fr; transition:grid-template-rows .24s ease }
+.chrow.open > .chbody { grid-template-rows:1fr }
+.chbody > div { overflow:hidden; min-height:0 }
+.chrow ul { margin:8px 0 2px 28px; padding-left:16px }
+@media (prefers-reduced-motion: reduce) { .chbody, .chh::before { transition:none } }
+.chrow li { margin:2px 0 }

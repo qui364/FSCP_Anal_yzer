@@ -43,9 +43,11 @@ const TreeNode = {
     const click = ev => {
       st.select(pk.value, props.item);
       if (props.item.xml || (ev.target === ev.currentTarget && ev.offsetX < (isMobile.value ? 34 : 22))) toggle();
-      else if (isMobile.value && view.value.kind !== 'plan') detOpen.value = true;   // на телефоне тап по узлу открывает детали
     };
-    const dbl = () => { if (!props.item.xml) toggle(); };
+    const dbl = () => {
+      if (isMobile.value) { if (view.value.kind !== 'plan') detOpen.value = true; return; }   // на телефоне двойной тап по узлу открывает детали
+      if (!props.item.xml) toggle();
+    };
     // зажатая кнопка не выделяет текст, а выбирает строку под мышью (в том числе при протягивании)
     const md = ev => {
       if (ev.button !== 0) return;
@@ -148,11 +150,27 @@ const FileHead = {
 // ============================ ширины панелей (фиксированные) ============================
 
 const defW = () => Math.round(innerWidth / 4); // пропорция 1:2:1
-const sideW = ref(defW() - 20), detW = ref(defW()), planW = ref(defW());
+const PANEL_W = 350;   // ширина левой и правой панелей по умолчанию
+const savedW = k => { try { const v = +localStorage.getItem(k); if (v >= 200 && v <= innerWidth / 2) return v; } catch { /* нет storage */ } return PANEL_W; };
+const sideW = ref(savedW('fscp.sideW')), detW = ref(savedW('fscp.detW')), planW = ref(defW());
+// разделитель панели: sign 1 — левая (тянем вправо — шире), -1 — правая (тянем влево — шире); утянули уже 120px — панель сворачивается, как кнопкой (collapse)
+const startPanelRz = (e, w, key, sign, collapse) => {
+  const x0 = e.clientX, w0 = w.value, el = e.currentTarget;
+  el.setPointerCapture(e.pointerId);
+  document.body.classList.add('rzing');
+  const mv = ev => { w.value = Math.max(0, Math.min(innerWidth / 2, w0 + sign * (ev.clientX - x0))); };
+  const up = () => { document.body.classList.remove('rzing'); if (w.value < 120) { w.value = w0; collapse(); } else w.value = Math.max(200, w.value); try { localStorage.setItem(key, String(w.value)); } catch { /* без storage */ } el.removeEventListener('pointermove', mv); el.removeEventListener('pointerup', up); el.removeEventListener('pointercancel', up); };
+  el.addEventListener('pointermove', mv); el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
+};
+// двойной клик по разделителю — ширина по умолчанию
+const resetW = (w, key, def) => { w.value = def; try { localStorage.removeItem(key); } catch { /* без storage */ } };
+const sideDbl = () => resetW(sideW, 'fscp.sideW', PANEL_W), detDbl = () => resetW(detW, 'fscp.detW', PANEL_W);
+const planDbl = () => { resetW(planW, 'fscp.planW', defW()); planWSet = false; };
+const sideRz = e => startPanelRz(e, sideW, 'fscp.sideW', 1, toggleNav), detRz = e => startPanelRz(e, detW, 'fscp.detW', -1, toggleDet);
 let planWSet = false;
 try { const v = +localStorage.getItem('fscp.planW'); if (v >= 200 && v <= innerWidth - 300) { planW.value = v; planWSet = true; } } catch { /* нет storage — ширина по умолчанию */ }
-// Окно меняет размер (Mini App Telegram открывается малым и разворачивается): панели без ручной ширины следуют за ним
-addEventListener('resize', () => { sideW.value = defW() - 20; detW.value = defW(); if (!planWSet) planW.value = defW(); });
+// Окно меняет размер (Mini App Telegram открывается малым и разворачивается): дерево планов без ручной ширины следует за ним
+addEventListener('resize', () => { if (!planWSet) planW.value = defW(); });
 
 // горизонтальная прокрутка без полосы: перетаскивание, колесо, затухание по краям, при обновлении — к концу
 const hscroll = {

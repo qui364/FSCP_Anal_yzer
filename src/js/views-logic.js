@@ -69,9 +69,11 @@ function buildLogicGroups() {
   return (m.lgroups = { groups, edges, cols });
 }
 
+let logicSaved = null;   // состояние схемы между заходами (масштаб/сдвиг, фокус, раскрытые блоки); действует, пока открыт тот же архив
 const LogicView = {
   setup() {
-    const g = buildLogicGroups(), hov = ref(''), pin = ref(''), more = ref(new Set()), openI = ref(new Set()), closing = ref(new Set()), svg = ref(null), v = ref({ k: 1, x: 0, y: 0 });
+    const g = buildLogicGroups(), sv = logicSaved?.g === g ? logicSaved : null;
+    const hov = ref(''), pin = ref(sv ? sv.pin : ''), more = ref(new Set(sv?.more)), openI = ref(new Set(sv?.openI)), closing = ref(new Set()), svg = ref(null), v = ref(sv ? sv.v : { k: 1, x: 0, y: 0 });
     const ls = (k, d) => { try { return localStorage.getItem('fscp.l3' + k) || d; } catch (e) { return d; } };
     const animOn = ref(ls('Anim', '1') === '1'), align = ref(ls('Align', 'center'));
     const COLW = 250, NW = 190, NH = 34, GAP = 8, PAD = 16;
@@ -126,6 +128,12 @@ const LogicView = {
     onBeforeUnmount(() => cancelAnimationFrame(raf));
     const sel = computed(() => pin.value !== '' ? pin.value : hov.value);
     const walk = (s, dir) => { const r = new Set([s]), q = [s]; while (q.length) { const x = q.pop(); for (const y of g.groups[x][dir]) if (!r.has(y)) { r.add(y); q.push(y); } } return r; };
+    if (sv && sv.focus !== '') {   // восстановить фокус на пути блока
+      focus.value = sv.focus;
+      lay.value = layout(new Set([...walk(sv.focus, 'out'), ...walk(sv.focus, 'in')]));
+      anim.value = { from: lay.value, to: lay.value, t: 1 };
+    }
+    onBeforeUnmount(() => { logicSaved = { g, v: v.value, focus: focus.value, pin: pin.value, more: [...more.value], openI: [...openI.value] }; });
     const flow = computed(() => sel.value === '' ? null : { down: walk(sel.value, 'out'), up: walk(sel.value, 'in') });
     const nodeOn = i => !flow.value || flow.value.down.has(i) || flow.value.up.has(i);
     const P = i => lay.value.pos.get(i);
@@ -191,9 +199,9 @@ const LogicView = {
       const r = svg.value.getBoundingClientRect(), L = lay.value, k = Math.min(r.width / L.W, r.height / L.H, 1.5);
       animate(lay.value, lay.value, v.value, { k, x: (r.width - L.W * k) / 2, y: (r.height - L.H * k) / 2 });
     };
-    // на телефоне схема сразу вписывается в экран (иначе видна только левая часть)
+    // при заходе схема сразу вписывается в экран (иначе видна только левая часть)
     onMounted(() => {
-      if (!isMobile.value || !svg.value) return;
+      if (!svg.value || sv) return;   // сохранённый вид не трогаем
       const r = svg.value.getBoundingClientRect(), L = lay.value, k = Math.min(r.width / L.W, r.height / L.H, 1.5);
       if (k > 0) v.value = { k, x: (r.width - L.W * k) / 2, y: (r.height - L.H * k) / 2 };
     });
