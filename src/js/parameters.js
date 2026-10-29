@@ -45,6 +45,10 @@ function deviceParameters(d) {
     rows.push({ name: name || 'Без имени', label: PARAM_LABELS[uid]?.[name] || name || 'Без имени', value, valueText: paramText(uid, name, value), baselineText: known ? paramText(uid, name, defaults[0]) : '', baseline: known ? defaults[0] : null,
       status: known ? equal ? 'same' : 'diff' : 'unknown', source });
   }
+  // Одно имя в обоих контейнерах с разными значениями — помечаем источник.
+  const names = new Map();
+  for (const r of rows) names.set(r.name, (names.get(r.name) || 0) + 1);
+  for (const r of rows) if (names.get(r.name) > 1) r.label += r.source === 'Properties' ? ' (конфигурация)' : ' (устройство)';
   const result = { rows, changed: rows.filter(p => p.status === 'diff').length,
     unknown: rows.filter(p => p.status === 'unknown').length, catalog: !!catalog };
   deviceParamCache.set(d, result);
