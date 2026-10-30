@@ -17,6 +17,7 @@ async function scrollToPk(pk) {
   document.querySelector(`[data-pk="${pk}"]`)?.scrollIntoView({ block: 'center' });
 }
 
+let tapPk = '', tapT = 0;
 const TreeNode = {
   name: 'TreeNode',
   props: { item: Object, parentPk: String, anc: Object },
@@ -35,13 +36,18 @@ const TreeNode = {
     const me = { item: props.item, toggle, count: () => count.value, isOpen: () => isOpen.value };
     st.reg.set(pk.value, me);
     onBeforeUnmount(() => { if (st.reg.get(pk.value) === me) st.reg.delete(pk.value); });
-    const click = ev => {
-      st.select(pk.value, props.item);
-      if (props.item.xml || (ev.target === ev.currentTarget && ev.offsetX < (isMobile.value ? 34 : 22))) toggle();
-    };
     const dbl = () => {
       if (isMobile.value) { if (view.value.kind !== 'plan') detOpen.value = true; return; }
       if (!props.item.xml) toggle();
+    };
+    const click = ev => {
+      st.select(pk.value, props.item);
+      if (isMobile.value) {
+        const t = Date.now();
+        if (tapPk === pk.value && t - tapT < 400) { tapPk = ''; dbl(); return; }
+        tapPk = pk.value; tapT = t;
+      }
+      if (props.item.xml || (ev.target === ev.currentTarget && ev.offsetX < (isMobile.value ? 34 : 22))) toggle();
     };
     const md = ev => {
       if (ev.button !== 0) return;

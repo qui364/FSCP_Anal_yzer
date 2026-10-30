@@ -16,11 +16,9 @@ const SettingsView = {
       if (!await ask({ title: 'Удалить сохранённые данные?', text: 'Будет удалено:', items: ['открытый архив .fscp', 'загруженный журнал событий', 'сохранённые настройки: вкладка, тема, ширины панелей'], note: 'Файлы на диске не затрагиваются.', ok: 'Удалить', danger: true })) return;
       try { for (const k of Object.keys(localStorage)) if (k.startsWith('fscp')) localStorage.removeItem(k); } catch {}
       const reload = () => { location.href = location.pathname; };
-      try { const r = indexedDB.deleteDatabase('fscp-viewer'); r.onsuccess = r.onerror = r.onblocked = reload; setTimeout(reload, 700); } catch { reload(); }
+      try { indexedDB.deleteDatabase('fscp-viewer'); const r = indexedDB.deleteDatabase('FSCPAnalyzer'); r.onsuccess = r.onerror = r.onblocked = reload; setTimeout(reload, 700); } catch { reload(); }
     };
-    const chOpen = reactive(new Set([CHANGELOG[0].v]));
-    const chToggle = v => { chOpen.has(v) ? chOpen.delete(v) : chOpen.add(v); };
-    return { ver: APP_VERSION, log: CHANGELOG, chOpen, chToggle, theme, set, icons, setIcons, exit, opts: [['system', 'Система'], ['light', 'Светлая'], ['dark', 'Тёмная']] };
+    return { theme, set, icons, setIcons, exit, opts: [['system', 'Система'], ['light', 'Светлая'], ['dark', 'Тёмная']] };
   },
   template: `<div class="set">
 <Teleport to="#tbhead"><h2>Настройки</h2></Teleport>
@@ -29,10 +27,6 @@ const SettingsView = {
   <div class="srow"><div><b>Тема</b><small>Светлая, тёмная или как в системе</small></div><div class="seg"><button v-for="[v, n] in opts" :key="v" :class="{ sel: theme === v }" @click="set(v)">{{ n }}</button></div></div>
   <div class="srow"><div><b>Иконки в деревьях</b><small>Показывать значки устройств, зон, сценариев и планов</small></div><button class="sw" role="switch" :aria-checked="icons" :class="{ on: icons }" @click="setIcons"></button></div>
 </div>
-<h3>О программе</h3>
-<div class="card"><div class="srow"><div><b>Версия</b><small>Номер сборки</small></div><span>{{ ver }}</span></div></div>
-<h3>История изменений</h3>
-<div class="card chlog"><div v-for="r in log" :key="r.v" class="chrow" :class="{ open: chOpen.has(r.v) }"><div class="chh" role="button" tabindex="0" :aria-expanded="chOpen.has(r.v)" @click="chToggle(r.v)" @keydown.enter.space.prevent="chToggle(r.v)"><b>{{ r.v }}</b><small>{{ r.d }}</small></div><div class="chbody"><div><ul><li v-for="t in r.items" :key="t">{{ t }}</li></ul></div></div></div></div>
 <h3>Данные</h3>
 <div class="card">
   <div class="srow"><div><b>Очистить сохранённое</b><small>Удалит открытый архив, журнал событий и настройки из браузера. Файлы на диске не затрагиваются</small></div><button class="danger" @click="exit">Удалить данные</button></div>

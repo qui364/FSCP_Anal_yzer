@@ -11,6 +11,7 @@ const NAV_IC = {
   jr: 'M6 4h11a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-11a1 1 0 0 1 -1 -1v-14a1 1 0 0 1 1 -1 M9 4v16 M13 8h3 M13 12h3',
   chk: 'M12 3.5l9.5 16.5h-19z M12 10v4.5 M12 17.2h.01',
   log: 'M13 5h8 M13 9h5 M13 15h8 M13 19h5 M3 4m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z M3 14m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z',
+  help: 'M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0 M12 17v.01 M12 13.5a1.5 1.5 0 0 1 1 -1.5a2.6 2.6 0 1 0 -3 -4',
   set: 'M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0'
 };
 const navIc = k => '<svg class="ni" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' + NAV_IC[k] + '"/></svg>';
@@ -20,15 +21,34 @@ const App = {
     const active = computed(() => {
       if (building.value) return building.value;
       const t = view.value.type;
-      return t === 'empty' ? '' : t === 'tree' ? view.value.kind : t === 'log' ? 'log' : t === 'loginfo' ? 'loginfo' : t === 'logic' ? 'logic' : t === 'check' ? 'check' : t === 'settings' ? 'settings' : 'raw';
+      return t === 'empty' ? '' : t === 'tree' ? view.value.kind : t === 'log' ? 'log' : t === 'loginfo' ? 'loginfo' : t === 'logic' ? 'logic' : t === 'check' ? 'check' : t === 'settings' ? 'settings' : t === 'help' ? 'help' : 'raw';
     });
-    const tab = t => t === 'raw' ? openRaw() : t === 'settings' ? go({ type: 'settings' }) : t === 'log' ? openLog() : t === 'loginfo' ? openLogInfo() : t === 'logic' ? openLogic() : t === 'check' ? openCheck() : openTree(t);
+    const tab = t => t === 'raw' ? openRaw() : t === 'settings' ? go({ type: 'settings' }) : t === 'help' ? go({ type: 'help' }) : t === 'log' ? openLog() : t === 'loginfo' ? openLogInfo() : t === 'logic' ? openLogic() : t === 'check' ? openCheck() : openTree(t);
     const counts = computed(() => { const m = model.value; return m ? { dev: m.dev.size - 1, zone: m.zones.length, delay: m.delays.length, plan: [...m.plan.values()].filter(p => !isPlanFolder(p)).length } : {}; });
-    const welcome = computed(() => !booting.value && !loaded.value && !loading.value && !error.value && !logData.value && !['log', 'loginfo', 'settings'].includes(view.value.type));
+    const welcome = computed(() => !booting.value && !loaded.value && !loading.value && !error.value && !logData.value && !['log', 'loginfo', 'settings', 'help'].includes(view.value.type));
     watch([logData, model], () => { chkCount.value = null; if (logData.value && model.value) idle(() => chkGet().then(r => { if (r) chkCount.value = r.eps.filter(e => e.key).length; }).catch(() => {})); }, { immediate: true });
     const onEsc = e => { if (e.key === 'Escape' && dlg.value) closeDlg(false); };
-    onMounted(() => window.addEventListener('keydown', onEsc));
-    onBeforeUnmount(() => window.removeEventListener('keydown', onEsc));
+    let sw = null;
+    const swBlocked = el => {
+      for (; el && el !== document.body; el = el.parentElement) {
+        if (/^(CANVAS|svg|INPUT|TEXTAREA|SELECT)$/i.test(el.tagName)) return true;
+        if (el.scrollWidth > el.clientWidth + 1 && /auto|scroll/.test(getComputedStyle(el).overflowX)) return true;
+      }
+      return false;
+    };
+    const onTs = e => { sw = isMobile.value && e.touches.length === 1 && !dlg.value && !welcome.value && !swBlocked(e.target) ? { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() } : null; };
+    const onTe = e => {
+      const s = sw; sw = null;
+      if (!s) return;
+      const c = e.changedTouches[0], dx = c.clientX - s.x, dy = c.clientY - s.y;
+      if (Math.abs(dx) < 70 || Math.abs(dy) > Math.abs(dx) * 0.5 || Date.now() - s.t > 700) return;
+      const tree = view.value.type === 'tree';
+      if (dx > 0) { if (detOpen.value) detOpen.value = false; else navOpen.value = true; }
+      else if (navOpen.value) navOpen.value = false;
+      else if (tree) detOpen.value = true;
+    };
+    onMounted(() => { window.addEventListener('keydown', onEsc); document.addEventListener('touchstart', onTs, { passive: true }); document.addEventListener('touchend', onTe, { passive: true }); });
+    onBeforeUnmount(() => { window.removeEventListener('keydown', onEsc); document.removeEventListener('touchstart', onTs); document.removeEventListener('touchend', onTe); });
     const fpick = ref(null), lpick = ref(null);
     const logName = computed(() => { const f = logData.value?.files; return f ? f[0].name + (f.length > 1 ? ` (+${f.length - 1})` : '') : ''; });
     const logTip = computed(() => (logData.value?.files || []).map(f => f.name).join('\n'));
@@ -79,6 +99,7 @@ const App = {
     <button v-if="logData && chkCount > 0" class="buildbtn child tint c-check" :disabled="!loaded || !!building" :class="{ sel: active === 'check' }" :title="loaded ? '' : 'Нужен открытый файл конфигурации'" @click="tab('check')"><span class="nmt"><span v-html="navIc('chk')"></span>Ложные пуски</span><span v-if="chkCount != null" class="cnt">{{ chkCount.toLocaleString('ru') }}</span></button>
   </div>
   <div id="sidebot">
+    <button class="buildbtn" :class="{ sel: active === 'help' }" @click="tab('help')"><span class="nmt"><span v-html="navIc('help')"></span>Справка</span></button>
     <button class="buildbtn" :class="{ sel: active === 'settings' }" @click="tab('settings')"><span class="nmt"><span v-html="navIc('set')"></span>Настройки</span></button>  </div>
 </div>
 <div id="loader" v-if="loaderText" role="status" aria-live="polite"><div class="ld"><h1 class="ldname"><span class="fcirc ldlogo"><img src="icons/flame.png" alt=""></span><span>FSCP <span class="anal">Anal</span>yzer</span></h1><div class="pb" :class="{ ind: !pct }"><i :style="{ width: pct + '%' }"></i></div><p>{{ loaderText }}<template v-if="pct"> · {{ pct }}%</template></p></div></div>
@@ -98,6 +119,7 @@ const App = {
   <log-info-view v-else-if="view.type === 'loginfo'" />
   <raw-view v-else-if="view.type === 'raw'" />
   <settings-view v-else-if="view.type === 'settings'" />
+  <help-view v-else-if="view.type === 'help'" />
   <file-view v-else-if="view.type === 'file'" :key="view.id" :name="view.name" />
   <xml-view v-else-if="view.type === 'xml'" :key="view.id" :name="view.name" :uid="view.uid" />
   <source-view v-else-if="view.type === 'source'" :key="view.id" :name="view.name" :line="view.line" />
@@ -114,7 +136,7 @@ createApp(App)
   .component('DeviceParameters', DeviceParameters)
   .component('LogicNode', LogicNode).component('TreeNode', TreeNode).component('DetailTable', DetailTable).component('FileHead', FileHead)
   .component('LogInfoView', LogInfoView).component('RawView', RawView).component('FileView', FileView)
-  .component('SourceView', SourceView).component('XmlView', XmlView).component('TreeView', TreeView).component('LogView', LogView).component('CheckView', CheckView).component('SettingsView', SettingsView).component('LogicView', LogicView).component('WelcomeView', WelcomeView).component('PlanCanvas', PlanCanvas)
+  .component('SourceView', SourceView).component('XmlView', XmlView).component('TreeView', TreeView).component('LogView', LogView).component('CheckView', CheckView).component('SettingsView', SettingsView).component('HelpView', HelpView).component('LogicView', LogicView).component('WelcomeView', WelcomeView).component('PlanCanvas', PlanCanvas)
   .mount('#app');
 
 const sample = new URLSearchParams(location.search).get('sample'), sampleLog = new URLSearchParams(location.search).get('log');
@@ -122,12 +144,12 @@ if (sampleLog) fetch(sampleLog).then(r => r.blob()).then(b => readLogs([new File
 if (sample) fetch(sample).then(r => r.blob()).then(b => load(Object.assign(b, { name: decodeURIComponent(sample.split('/').pop()) }), false));
 else idbDo('readonly', s => s.get('log')).then(recs => { if (recs) booting.value = 'Читаю сохранённый журнал…'; return recs; }).then(recs => recs && readLogs(recs.map(r => new File([r.blob], r.name)))).catch(() => {}).then(() => { booting.value = 'Ищу сохранённый архив…'; return idbDo('readonly', s => s.get('file')); }).then(async rec => {
   let tab = ''; try { tab = localStorage.fscpTab || ''; } catch {}
-  if (!rec) { if (tab === 'settings') go({ type: 'settings' }); else if (tab === 'log' && logData.value) openLog(); else if (tab === 'loginfo' && logData.value) openLogInfo(); return; }
+  if (!rec) { if (tab === 'settings') go({ type: 'settings' }); else if (tab === 'help') go({ type: 'help' }); else if (tab === 'log' && logData.value) openLog(); else if (tab === 'loginfo' && logData.value) openLogInfo(); return; }
   booting.value = 'Открываю архив…';
   await load(new File([rec.blob], rec.name, { lastModified: rec.mtime || 0 }), false, false);
   booting.value = 'Открываю вкладку…';
   if (!loaded.value) { forgetFile(); return; }
-  if (tab === 'raw') openRaw(); else if (tab === 'log') openLog(); else if (tab === 'loginfo') openLogInfo(); else if (tab === 'logic') await openLogic(); else if (tab === 'check' && logData.value) await openCheck(); else if (tab === 'settings') go({ type: 'settings' }); else await openTree(['zone', 'delay', 'plan'].includes(tab) ? tab : 'dev');
+  if (tab === 'raw') openRaw(); else if (tab === 'log') openLog(); else if (tab === 'loginfo') openLogInfo(); else if (tab === 'logic') await openLogic(); else if (tab === 'check' && logData.value) await openCheck(); else if (tab === 'settings') go({ type: 'settings' }); else if (tab === 'help') go({ type: 'help' }); else await openTree(['zone', 'delay', 'plan'].includes(tab) ? tab : 'dev');
 }).catch(() => {}).then(() => { booting.value = ''; });
 
 if (/tgWebApp/.test(location.hash)) {

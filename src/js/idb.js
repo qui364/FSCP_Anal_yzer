@@ -1,6 +1,6 @@
 let dbP = null;
 const idb = () => dbP ||= new Promise((res, rej) => {
-  const r = indexedDB.open('fscp-viewer', 1);
+  const r = indexedDB.open('FSCPAnalyzer', 1);
   r.onupgradeneeded = () => r.result.createObjectStore('kv');
   r.onsuccess = () => { r.result.onversionchange = () => { r.result.close(); dbP = null; }; res(r.result); };
   r.onerror = () => { dbP = null; rej(r.error); };

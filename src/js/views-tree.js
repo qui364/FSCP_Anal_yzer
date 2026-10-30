@@ -10,7 +10,21 @@ const TreeView = {
     const flat = () => diffItems.value ||= [...m.dev.values()].map(d => devItem(d, true)).filter(it => it.paramInfo.changed);
     const base = () => props.kind === 'dev' && diff.value ? flat() : def.roots;
     let gone = false;
-    onBeforeUnmount(() => { gone = true; });
+    const lastTop = new WeakMap();
+    const onScroll = e => {
+      const el = e.target, stk = document.querySelector('#main > .stk');
+      if (!stk || !(el.id === 'main' || el.id === 'tview')) return;
+      const y = el.scrollTop, d = y - (lastTop.get(el) ?? y);
+      lastTop.set(el, y);
+      if (Math.abs(d) < 4 && y > 0) return;
+      const hide = y > 40 && d > 0;
+      if (hide === !!stk._hid) return;
+      stk._hid = hide;
+      stk.style.position = hide ? 'relative' : '';
+      stk.style.marginTop = hide ? -(stk.offsetHeight + parseFloat(getComputedStyle(stk.parentElement).paddingTop)) + 'px' : '';
+    };
+    document.addEventListener('scroll', onScroll, true);
+    onBeforeUnmount(() => { gone = true; document.removeEventListener('scroll', onScroll, true); });
     if (props.kind === 'dev') {
       const list = [...m.dev.values()], acc = [];
       let i = 0;
@@ -80,6 +94,8 @@ const TreeView = {
       }
     }
     const onKey = ev => treeOnKey(st, ev);
+    const runFilter = () => { if (mode.value !== 'filter') { mode.value = 'filter'; search.lastQ = ''; } applyFilter(); };
+    const runFind = () => { if (mode.value !== 'find') { mode.value = 'find'; found.value = ''; search.lastQ = ''; applyFilter(); } doFind(); };
     const toggleMode = () => { mode.value = mode.value === 'find' ? 'filter' : 'find'; found.value = ''; search.lastQ = ''; applyFilter(); };
     const toggleDiff = () => {
       const cur = selItem.value;
@@ -143,14 +159,14 @@ const TreeView = {
       el.addEventListener('pointermove', mv); el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
     };
     const collapseAll = () => { st.open.clear(); st.select('', null); };
-    return { collapseAll, startRz, planDbl, onPick, planUid, detOpen, detW, planW, def, query, found, doFind, mode, roots, toggleMode, toggleDiff, diff, diffCount, onEnter, applyFilter, selItem, rows, detailBlocks, logic, partOf, goLogic, crumbs, goCrumb, onKey, noAnc: new Set() };
+    return { collapseAll, startRz, planDbl, onPick, planUid, detOpen, detW, planW, def, query, found, doFind, mode, roots, runFilter, runFind, toggleMode, toggleDiff, diff, diffCount, onEnter, applyFilter, selItem, rows, detailBlocks, logic, partOf, goLogic, crumbs, goCrumb, onKey, noAnc: new Set() };
   },
   template: `
 <Teleport to="#tbhead"><h2>{{ def.title }}</h2><span class="m">{{ def.note }}<template v-if="def.warn"> · <span class="warn">{{ def.warn }}</span></template></span><button v-if="kind === 'dev'" type="button" class="dsw" :class="{ on: diff }" :aria-pressed="diff" title="Плоский список устройств, параметры которых отличаются от параметров по умолчанию" @click="toggleDiff">Только с отличиями<template v-if="diffCount !== null"> <b>{{ diffCount }}</b></template></button></Teleport>
-<div class="stk"><div class="bar"><div class="sgrp"><input type="search" v-model="query" @keydown.enter="onEnter" @input="mode === 'filter' && applyFilter()" :placeholder="mode === 'filter' ? 'Фильтр по подписи' : 'Поиск по подписи (Enter — следующее)'"><button @click="toggleMode" :title="mode === 'filter' ? 'Режим: фильтр (только совпадения). Нажмите — переключить на поиск' : 'Режим: поиск (переход к совпадениям). Нажмите — переключить на фильтр'" class="ib"><svg v-if="mode === 'filter'" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M2 3h12l-4.5 5.5V13l-3-1.5V8.5z"/></svg><svg v-else width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5L14 14"/></svg></button></div><button @click="collapseAll" title="Свернуть все узлы и сбросить выбор" aria-label="Свернуть все" class="ib"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2.5l5 4 5-4M3 13.5l5-4 5 4"/></svg></button><span class="m">{{ found }}</span></div>
+<div class="stk"><div class="bar"><div class="sgrp"><input type="search" v-model="query" @keydown.enter="onEnter" @input="mode === 'filter' && applyFilter()" :placeholder="mode === 'filter' ? 'Фильтр по подписи' : 'Поиск по подписи (Enter — следующее)'"><span v-if="found" class="fcnt">{{ found }}</span><button type="button" @click="runFilter" title="Фильтр: показывать только совпадения" aria-label="Фильтр"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M2 3h12l-4.5 5.5V13l-3-1.5V8.5z"/></svg></button><button type="button" @click="runFind" title="Поиск: переход к совпадениям (Enter — следующее)" aria-label="Поиск"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5L14 14"/></svg></button></div></div>
 <div class="crumbs tc m" v-hscroll><template v-if="crumbs.length"><template v-for="(c, i) in crumbs" :key="i"><span :class="[i < crumbs.length - 1 ? 'ref chip chev' : 'chip chev', 'c-' + c.k]" @click="i < crumbs.length - 1 && goCrumb(i)">{{ c.label }}</span></template></template><template v-else>Выберите узел — здесь появится путь</template></div></div>
 <div class="split">
-  <div id="tview" class="xml" tabindex="0" @keydown="onKey" :style="def.plans ? { width: planW + 'px' } : null"><tree-node v-for="r in roots" :key="r.key" :item="r" parent-pk="" :anc="noAnc" /></div>
+  <div id="tview" class="xml" tabindex="0" @keydown="onKey" :style="def.plans ? { width: planW + 'px' } : null"><button @click="collapseAll" title="Свернуть все узлы и сбросить выбор" aria-label="Свернуть все" class="ib tvcol"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 8h9"/></svg></button><tree-node v-for="r in roots" :key="r.key" :item="r" parent-pk="" :anc="noAnc" /></div>
   <div v-if="def.plans" class="rzh"><div class="prz" title="Потяните, чтобы изменить ширину дерева" @pointerdown.prevent="startRz" @dblclick="planDbl"></div></div>
   <div v-if="def.plans" id="tprev"><plan-canvas :plan="planUid" :sel="selItem && selItem.k !== 'plan' ? selItem.key : ''" @pick="onPick" /></div>
   <div id="tdet" :class="{ closed: !detOpen }" :inert="!detOpen">
