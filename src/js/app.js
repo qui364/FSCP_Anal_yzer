@@ -77,7 +77,7 @@ const App = {
   template: `
 <div id="topbar" v-if="!welcome">
   <button class="iconbtn" :class="{ sel: navOpen }" title="Навигация" @click="toggleNav"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 4h14M2 9h14M2 14h14"/></svg></button>
-  <span id="apptitle"><span class="fcirc appic"><img src="icons/flame.png" alt=""></span><span>FSCP <span class="anal">Anal</span>yzer <small class="ver">v{{ APP_VERSION }}</small></span></span>
+  <span id="apptitle"><span class="fcirc appic"><img src="icons/flame.png" alt=""></span><span>FSCP<span class="anal">Anal</span>yzer <small class="ver">v{{ APP_VERSION }}</small></span></span>
   <span id="tbhead"></span>
   <span class="tbsp"></span>
   <button v-if="view.type === 'tree'" class="iconbtn tbright" :class="{ sel: detOpen }" title="Панель деталей" @click="toggleDet"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 4h14M2 9h14M2 14h14"/></svg></button>
@@ -102,7 +102,7 @@ const App = {
     <button class="buildbtn" :class="{ sel: active === 'help' }" @click="tab('help')"><span class="nmt"><span v-html="navIc('help')"></span>Справка</span></button>
     <button class="buildbtn" :class="{ sel: active === 'settings' }" @click="tab('settings')"><span class="nmt"><span v-html="navIc('set')"></span>Настройки</span></button>  </div>
 </div>
-<div id="loader" v-if="loaderText" role="status" aria-live="polite"><div class="ld"><h1 class="ldname"><span class="fcirc ldlogo"><img src="icons/flame.png" alt=""></span><span>FSCP <span class="anal">Anal</span>yzer</span></h1><div class="pb" :class="{ ind: !pct }"><i :style="{ width: pct + '%' }"></i></div><p>{{ loaderText }}<template v-if="pct"> · {{ pct }}%</template></p></div></div>
+<div id="loader" v-if="loaderText" role="status" aria-live="polite"><div class="ld"><h1 class="ldname"><span class="fcirc ldlogo"><img src="icons/flame.png" alt=""></span><span>FSCP<span class="anal">Anal</span>yzer</span></h1><div class="pb" :class="{ ind: !pct }"><i :style="{ width: pct + '%' }"></i></div><p>{{ loaderText }}<template v-if="pct"> · {{ pct }}%</template></p></div></div>
 <div id="scrim" v-if="isMobile && navOpen && !welcome" @click="toggleNav"></div>
 <div v-if="dlg" class="modal" @click.self="closeDlg(false)">
   <div class="dlg" role="dialog" aria-modal="true">
@@ -113,7 +113,7 @@ const App = {
     <div class="acts"><button v-if="dlg.cancel" @click="closeDlg(false)">{{ dlg.cancel }}</button><button :class="{ danger: dlg.danger }" @click="closeDlg(true)">{{ dlg.ok }}</button></div>
   </div>
 </div>
-<div id="main" v-if="!welcome">
+<div id="main" v-if="!welcome" :class="'v-' + view.type">
   <p v-if="error" class="warn">{{ error }}</p>
   <p v-if="loading" class="m">{{ loading }}</p>
   <log-info-view v-else-if="view.type === 'loginfo'" />

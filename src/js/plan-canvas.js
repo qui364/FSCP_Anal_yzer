@@ -13,17 +13,6 @@ const planIconHot = f => {
   if (!t) { t = document.createElement('canvas'); t.width = im.naturalWidth; t.height = im.naturalHeight; const x = t.getContext('2d'); x.drawImage(im, 0, 0); x.globalCompositeOperation = 'source-atop'; x.fillStyle = 'rgba(255,20,20,.9)'; x.fillRect(0, 0, t.width, t.height); planTint.set(f, t); }
   return t;
 };
-const darkMq = matchMedia('(prefers-color-scheme: dark)');
-let gridKey = '', gridCols = null;
-const gridColors = () => {
-  const k = (document.documentElement.dataset.theme || '') + '|' + darkMq.matches;
-  if (k !== gridKey) {
-    const cs = getComputedStyle(document.documentElement);
-    gridCols = { line: cs.getPropertyValue('--line').trim() || '#ccc', mut: cs.getPropertyValue('--mut').trim() || '#888' };
-    gridKey = k;
-  }
-  return gridCols;
-};
 const chan = (e, tag) => { const c = child(e, tag); return c && [txt(c, 'R'), txt(c, 'G'), txt(c, 'B'), (+txt(c, 'A') || 0) / 255]; };
 const color = (e, tag) => { const c = chan(e, tag); return c ? `rgb(${c[0]},${c[1]},${c[2]})` : '#888'; };
 const colorA = (e, tag) => { const c = chan(e, tag); return c ? `rgba(${c[0]},${c[1]},${c[2]},${c[3]})` : 'transparent'; };
@@ -65,23 +54,6 @@ const PlanCanvas = {
       if (!img) return;
       g.setTransform(scale * dpr, 0, 0, scale * dpr, ox * dpr, oy * dpr);
       g.imageSmoothingQuality = 'high';
-      {
-        const { line, mut } = gridColors();
-        let st = 50; while (st * scale < 28) st *= 2; while (st * scale > 70 && st > 1) st /= 2;
-        const x0 = -ox / scale, y0 = -oy / scale, x1 = x0 + w / dpr / scale, y1 = y0 + h / dpr / scale, lw = 1 / (scale * dpr);
-        g.save(); g.lineWidth = lw; g.beginPath();
-        for (let i = Math.floor(x0 / st); i * st <= x1; i++) { if (i % 5) { g.moveTo(i * st, y0); g.lineTo(i * st, y1); } }
-        for (let j = Math.floor(y0 / st); j * st <= y1; j++) { if (j % 5) { g.moveTo(x0, j * st); g.lineTo(x1, j * st); } }
-        g.strokeStyle = line; g.globalAlpha = 0.45; g.stroke(); g.beginPath();
-        for (let i = Math.floor(x0 / st); i * st <= x1; i++) { if (!(i % 5)) { g.moveTo(i * st, y0); g.lineTo(i * st, y1); } }
-        for (let j = Math.floor(y0 / st); j * st <= y1; j++) { if (!(j % 5)) { g.moveTo(x0, j * st); g.lineTo(x1, j * st); } }
-        g.globalAlpha = 1; g.stroke(); g.restore();
-        g.save(); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.font = '10px system-ui, sans-serif'; g.fillStyle = mut; g.textBaseline = 'top'; g.textAlign = 'left';
-        for (let i = Math.floor(x0 / st); i * st <= x1; i++) if (!(i % 5)) g.fillText(String(Math.round(i * st)), i * st * scale + ox + 3, 2);
-        g.textBaseline = 'bottom';
-        for (let j = Math.floor(y0 / st); j * st <= y1; j++) if (!(j % 5) && j) g.fillText(String(Math.round(j * st)), 3, j * st * scale + oy - 2);
-        g.restore();
-      }
       for (const s of segs) g.drawImage(s.bmp, s.ox, s.oy, s.w ?? s.bmp.width, s.h);
       g.globalAlpha = 1;
       for (const o of objs) {

@@ -203,10 +203,9 @@ const LogicView = {
   template: `<div class="l3">
   <Teleport to="#tbhead"><h2>Логика</h2></Teleport>
   <div class="l3-bar">
-    <button :class="{ on: animOn }" @click="toggleAnim">Анимация: {{ animOn ? 'вкл' : 'выкл' }}</button>
-    <button @click="fit">Вписать</button>
-    <span class="m">Выравнивание:</span>
-    <button v-for="a in [['top', 'Верх'], ['center', 'Центр'], ['bottom', 'Низ']]" :key="a[0]" :class="{ on: align === a[0] }" @click="setAlign(a[0])">{{ a[1] }}</button>
+    <button class="ib" :class="{ on: animOn }" @click="toggleAnim" :title="'Анимация: ' + (animOn ? 'вкл' : 'выкл')"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v16l13 -8z"/></svg></button>
+    <button class="ib" @click="fit" title="Вписать"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V4h4M20 8V4h-4M4 16v4h4M20 16v4h-4"/></svg></button>
+    <button v-for="a in [['top', 'Выравнивание: верх', 'M4 4h16M7 8h3v9H7zM14 8h3v5h-3z'], ['center', 'Выравнивание: центр', 'M4 12h16M7 7h3v10H7zM14 9h3v6h-3z'], ['bottom', 'Выравнивание: низ', 'M4 20h16M7 11h3v6H7zM14 7h3v10h-3z']]" :key="a[0]" class="ib" :class="{ on: align === a[0] }" :title="a[1]" @click="setAlign(a[0])"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path :d="a[2]"/></svg></button>
   </div>
   <svg ref="svg" class="l3-svg" @wheel.prevent="onWheel" @pointerdown="down" @pointermove="move" @pointerup="up" @pointercancel="up" @click="bgClick" @mouseleave="hov = ''"><g :transform="'translate(' + v.x + ' ' + v.y + ') scale(' + v.k + ')'">
     <g v-for="e in scene.edges" :key="e.k" :opacity="e.al"><path :d="e.d" :stroke-width="e.sw" :class="['l3-e', cls(e), { off: !edgeOn(e) }]" /></g>

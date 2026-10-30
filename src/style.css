@@ -56,7 +56,7 @@ body { margin:0; font:14px/1.45 system-ui,sans-serif; background:var(--bg); colo
 #welcome .ver { position:absolute; bottom:12px; left:0; right:0; text-align:center }
 #appname .anal { color:#e5484d }
 #appname { display:flex; align-items:center; justify-content:center; margin:32px 0 0; font-size:32px; font-weight:600; letter-spacing:.5px; color:var(--fg) }
-#drop { margin:auto; width:min(640px, 100% - 32px); box-sizing:border-box; font-size:18px; line-height:1.6; border:2px dashed var(--line); border-radius:14px; padding:72px 48px; text-align:center; color:var(--mut); cursor:pointer; transition:border-color .15s, color .15s, background .15s, transform .15s }
+#drop { margin:auto; width:min(640px, 100% - 32px); box-sizing:border-box; font-size:22px; line-height:1.6; border:2px dashed var(--line); border-radius:14px; padding:72px 48px; text-align:center; color:color-mix(in srgb, var(--fg) 75%, var(--mut)); cursor:pointer; transition:border-color .15s, color .15s, background .15s, transform .15s }
 #drop:hover, #drop.over { border-color:var(--acc); color:var(--acc); background:color-mix(in srgb, var(--acc) 8%, transparent) }
 #drop:hover { transform:translateY(-1px) }
 #drop.over { transform:scale(1.02) }
@@ -355,7 +355,8 @@ svg.ni { vertical-align:-3px; margin-right:8px; flex:none }
 #main > .l3 { width:100%; flex:1 1 0; min-height:0 }
 #main:has(> .l3) { padding:0 }
 .l3 { padding:0; overflow:hidden; box-sizing:border-box; display:flex; flex-direction:column }
-.l3-bar { display:flex; align-items:center; gap:8px; padding:8px 12px; flex:none; border-bottom:1px solid var(--line) } .l3-bar button.on { background:var(--acc); color:#fff }
+.l3-bar { display:flex; align-items:center; gap:8px; padding:8px 12px; flex:none; } .l3-bar button.on { background:var(--acc); color:#fff }
+.l3-bar .ib { width:var(--ctl); padding:0; display:flex; align-items:center; justify-content:center } .l3-bar .ib svg { display:block; flex:none }
 .l3-svg { display:block; flex:1 1 0; min-height:0; width:100%; cursor:grab; touch-action:none; user-select:none } .l3-svg:active { cursor:grabbing }
 .l3-e { fill:none; opacity:.4; transition:opacity .15s } .l3-e.off { opacity:.05 }
 .l3-e.k-zone { stroke:var(--c-zone) } .l3-e.k-delay { stroke:var(--c-delay) } .l3-e.k-dev { stroke:var(--c-dev) }
@@ -398,7 +399,7 @@ svg.ni { vertical-align:-3px; margin-right:8px; flex:none }
   #main { padding:12px }
   #welcome { padding:0 16px }
   #appname { font-size:26px }
-  #drop { padding:48px 16px; width:100%; font-size:16px }
+  #drop { padding:48px 16px; width:100%; font-size:19px }
   #tview { touch-action:manipulation }
 
   #scrim { position:fixed; left:0; right:0; bottom:0; top:var(--tb); z-index:55; background:rgba(8,10,16,.45); animation:fade .15s }
@@ -525,3 +526,6 @@ svg.ni { vertical-align:-3px; margin-right:8px; flex:none }
 #side button { min-height:38px; font-size:14px }
 #side svg.ni { width:17px; height:17px }
 #trees { grid-template-columns:minmax(0, 1fr) }
+#main:is(.v-raw, .v-settings, .v-help, .v-logic), #tprev, #welcome, #loader { --gl:color-mix(in srgb, var(--acc) 9%, transparent); --gs:color-mix(in srgb, var(--acc) 4%, transparent); background-color:var(--bg); background-attachment:fixed; background-image:radial-gradient(ellipse at center, transparent 0, var(--bg) 85%), repeating-linear-gradient(-15deg, var(--gl) 0 1px, transparent 1px 80px), repeating-linear-gradient(75deg, var(--gl) 0 1px, transparent 1px 80px), repeating-linear-gradient(-15deg, var(--gs) 0 1px, transparent 1px 16px), repeating-linear-gradient(75deg, var(--gs) 0 1px, transparent 1px 16px) }
+#drop { background-color:var(--bg); --gl:color-mix(in srgb, var(--acc) 4%, transparent); --gs:color-mix(in srgb, var(--acc) 1.5%, transparent); background-image:repeating-linear-gradient(-15deg, var(--gl) 0 1px, transparent 1px 80px), repeating-linear-gradient(75deg, var(--gl) 0 1px, transparent 1px 80px), repeating-linear-gradient(-15deg, var(--gs) 0 1px, transparent 1px 16px), repeating-linear-gradient(75deg, var(--gs) 0 1px, transparent 1px 16px) }
+#drop:hover, #drop.over { background-image:linear-gradient(color-mix(in srgb, var(--acc) 8%, transparent), color-mix(in srgb, var(--acc) 8%, transparent)), repeating-linear-gradient(-15deg, var(--gl) 0 1px, transparent 1px 80px), repeating-linear-gradient(75deg, var(--gl) 0 1px, transparent 1px 80px), repeating-linear-gradient(-15deg, var(--gs) 0 1px, transparent 1px 16px), repeating-linear-gradient(75deg, var(--gs) 0 1px, transparent 1px 16px) }
